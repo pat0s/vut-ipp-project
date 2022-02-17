@@ -1,5 +1,7 @@
 <?php
 
+include "src/xmlProcessing.php";
+
 function loadArguments()
 {
     global $argc;
@@ -28,63 +30,38 @@ function loadArguments()
             exit(10);
         }
     }
-
-    // TODO delete
-    exit(0);
 }
 
-function createXMLBody($xml)
+class InstructionChecker
 {
-    $xml->openMemory();
-    $xml->startDocument('1.0', 'UTF-8');
-
-    // program tag
-    $xml->startElement('program');
-    $xml->writeAttribute('language', 'IPPCode22');
+    private $opcode;
+    private $var;
+    private $type;
+    private $arg;
 }
-
-function addInstruction($xml, &$order, $opcode)
-{
-    $xml->startElement('instruction');
-    $xml->writeAttribute('order', $order++);
-    $xml->writeAttribute('opcode', strtoupper($opcode));
-}
-
-function addArg($xml, $n, $type, $value)
-{
-    $xml->startElement('arg'.$n);
-    $xml->writeAttribute('type', $type);
-    $xml->text($value);
-    $xml->endElement();
-}
-
-function endElement($xml)
-{
-    $xml->endElement();
-}
-
-function endXMLBody($xml)
-{
-    // end program tag
-    $xml->endElement();
-    
-    // end document
-    $xml->endDocument();
-    file_put_contents('output.xml', $xml->outputMemory());
-}
-
-
 
 loadArguments();
-$order = 1;
-$xml = new XMLWriter();
-createXMLBody($xml);
-addInstruction($xml, $order, "pushs");
-addArg($xml, 1, 'string', "GF@ahoj");
-endElement($xml);
-endXMLBody($xml);
+
+$xmlWriter = new XMLFileWriter();
+$xmlWriter->XMLFileWriter();
+$xmlWriter->addInstruction("pushs");
+$xmlWriter->addArg(1, "string", "GF@ahoj");
+$xmlWriter->endElement();
+$xmlWriter->endXMLBody();
+
+$instructionChecker = new InstructionChecker();
 
 
+// Main function
+function loadSourceCode()
+{
+    while ($line = fgets(STDIN))
+    {       
+        $separetedItems = explode(' ', $line);
+        echo $separetedItems[0];
+    }
+}
 
+loadSourceCode();
 
 ?>
