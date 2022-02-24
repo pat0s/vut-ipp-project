@@ -4,33 +4,33 @@ declare(strict_types=1);
 
 class XMLFileWriter{
 
-    private $order;
-    private $xml;
+    private static $order;
+    private static $xml;
 
     /**
 	 * Constructor
 	 */
-    public function XMLFileWriter()
+    public static function XMLFileWriter()
     {
-        $this->order = 1;
-        $this->xml = new XMLWriter();
-        $this->xml->openMemory();
-        $this->xml->startDocument('1.0', 'UTF-8');
+        self::$order = 1;
+        self::$xml = new XMLWriter();
+        self::$xml->openMemory();
+        self::$xml->startDocument('1.0', 'UTF-8');
 
         // Program tag
-        $this->xml->startElement('program');
-        $this->xml->writeAttribute('language', 'IPPCode22');
+        self::$xml->startElement('program');
+        self::$xml->writeAttribute('language', 'IPPCode22');
     }
 
     /**
 	 * Convert an Array to XML
 	 * @param string $opcode - name an operation
 	 */
-    public function addInstruction($opcode)
+    public static function addInstruction($opcode)
     {
-        $this->xml->startElement('instruction');
-        $this->xml->writeAttribute('order', strval($this->order++));
-        $this->xml->writeAttribute('opcode', strtoupper($opcode));
+        self::$xml->startElement('instruction');
+        self::$xml->writeAttribute('order', strval(self::$order++));
+        self::$xml->writeAttribute('opcode', strtoupper($opcode));
     }
 
     /**
@@ -39,31 +39,31 @@ class XMLFileWriter{
 	 * @param string $type - argument's type
 	 * @param string $value - value of the argument
 	 */
-    public function addArg($n, $type, $value)
+    public static function addArg($n, $type, $value)
     {
-        $this->xml->startElement('arg'.$n);
-        $this->xml->writeAttribute('type', $type);
-        $this->xml->text($value);
-        $this->xml->endElement();
+        self::$xml->startElement('arg'.$n);
+        self::$xml->writeAttribute('type', $type);
+        self::$xml->text($value);
+        self::$xml->endElement();
     }
 
     /**
 	 * Close XML element's tag
 	 */
-    public function endElement()
+    public static function endElement()
     {
-        $this->xml->endElement();
+        self::$xml->endElement();
     }
 
     /**
 	 * Close program tag and end document
 	 */
-    public function endXMLBody()
+    public static function endXMLBody()
     {
-        $this->xml->endElement();
+        self::$xml->endElement();
         
-        $this->xml->endDocument();
-        file_put_contents('output.xml', $this->xml->outputMemory());
+        self::$xml->endDocument();
+        file_put_contents('output.xml', self::$xml->outputMemory());
     }
 
 }
