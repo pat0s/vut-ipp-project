@@ -1,0 +1,5 @@
+.IPPcode22 #ze vraj tu mozu byt aj komentare
+INT2CHAR GF@premenna string@_ahoj>
+POPS LF@&premenna&
+LABEL a<hoj
+INT2CHAR LF@auto string@ahoj\000

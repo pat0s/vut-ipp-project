@@ -1,0 +1,10 @@
+.IPPcode22 #ze vraj tu mozu byt aj komentare
+
+#   fdasf
+#  dfaf adfa
+PUSHS string@ahoj
+INT2CHAR GF@premenna int@10
+LABEL while
+JUMPIFEQ end GF@counter string@aaa
+WRITE GF@counter
+LABEL end
