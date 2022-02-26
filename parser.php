@@ -2,7 +2,264 @@
 
 include "src/xmlProcessing.php";
 
-// Load and check program arguments
+
+/**
+ * Class for parsing IPPcode22 source code
+ */
+class InstructionParser
+{
+    // instruction
+    private $opcode;
+    // instruction's arguments
+    private $args = [];
+    // header
+    public $firstLine = true;
+
+    /**
+     * @brief Checks lexical and syntactical rules
+     * 
+     * @param Array of separated items
+     */
+    public function checkSyntax($separatedItems)
+    {
+        if ($this->firstLine)
+        {
+            if (empty($separatedItems))
+            {
+                fprintf(STDERR, "ERROR: Missing header!");
+                exit(21);
+            }
+            else if ((count($separatedItems) == 1) && ($separatedItems[0] == ".IPPcode22"))
+            {
+                $this->firstLine = false;
+                return;
+            }
+            else
+            {
+                fprintf(STDERR, "ERROR: Wrong header!");
+                exit(21);
+            }
+        }
+
+        if ($this->checkItemsCount($separatedItems) == false)
+        {
+            fprintf(STDERR, "ERROR: Lexical or syntax!");
+            exit(22);
+        }
+
+        if ($this->processArgs($separatedItems) == false)
+        {
+            fprintf(STDERR, "ERROR: Lexical or syntax!");
+            exit(22);
+        }
+    }
+
+    /**
+     * @brief Checks number of instruction's arguments
+     * 
+     * @param Array of separated items
+     * @return true/false
+     */
+    private function checkItemsCount($separatedItems)
+    {
+        if (empty($separatedItems))
+        {
+            return false;
+        }
+
+        $this->opcode = strtoupper($separatedItems[0]);
+
+        switch ($this->opcode) {
+            // zero args
+            case "CREATEFRAME":
+            case "PUSHFRAME":
+            case "POPFRAME":
+            case "RETURN":
+            case "BREAK":
+                if (count($separatedItems) !== 1)
+                {
+                    return false;
+                }
+                $this->args = [];
+                break;
+            // <label>
+            case "LABEL":
+            case "JUMP":
+            case "CALL":
+                if (count($separatedItems) !== 2)
+                {
+                    return false;
+                }
+                $this->args = ["label"];
+                break;
+            // <symb>
+            case "EXIT":
+            case "DPRINT":
+            case "WRITE":
+            case "PUSHS":
+                if (count($separatedItems) !== 2)
+                {
+                    return false;
+                }
+                $this->args = ["symb"];
+                break;
+            // <var>
+            case "DEFVAR":
+            case "POPS":
+                if (count($separatedItems) !== 2)
+                {
+                    return false;
+                }
+                $this->args = ["var"];
+                break;
+            // <var> <symb>
+            case "TYPE":
+            case "STRLEN":
+            case "INT2CHAR":
+                if (count($separatedItems) !== 3)
+                {
+                    return false;
+                }
+                $this->args = ["var", "symb"];
+                break;
+            // <var> <type>
+            case "READ":
+                if (count($separatedItems) !== 3)
+                {
+                    return false;
+                }
+                $this->args = ["var", "type"];
+                break;
+            // <label> <symb> <symb> jumps
+            case "JUMPIFEQ":
+            case "JUMPIFNEQ":
+                if (count($separatedItems) !== 4)
+                {
+                    return false;
+                }
+                $this->args = ["label", "symb", "symb"];
+                break;
+            // <var> <symb> <symb>
+            case "AND":
+            case "OR":
+            case "NOT":
+            case "LT":
+            case "GT":
+            case "EQ":
+            case "IDIV":
+            case "MUL":
+            case "SUB":
+            case "ADD":
+            case "STRI2INT":
+                if (count($separatedItems) !== 4)
+                {
+                    return false;
+                }
+                $this->args = ["var", "symb", "symb"];
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Parses instruction and its arguments.
+     * 
+     * @param Array of separated items
+     * @return true/false
+     */
+    private function processArgs($separatedItems)
+    {
+        // generate opcode instruction
+        XMLFileWriter::addInstruction($this->opcode);
+        
+        // only opcode
+        if (count($this->args) == 0)
+        {
+            XMLFileWriter::endElement();
+        }
+        else
+        {
+            $pos = 1;
+            foreach($this->args as $arg)
+            {
+                if ($arg == "label")
+                {
+                    if (!preg_match("/^[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separatedItems[$pos]))
+                        return false;
+                    
+                    XMLFileWriter::addArg($pos, $arg, $separatedItems[$pos]);
+                }
+                else if ($arg == "var" || ($arg == "symb" && preg_match("/^(GF|LF|TF)/", $separatedItems[$pos])))
+                {
+                    if (!preg_match("/^(GF|LF|TF)@[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separatedItems[$pos]))
+                        return false;
+
+                    XMLFileWriter::addArg($pos, $arg, $separatedItems[$pos]);
+                }
+                else if($arg == "symb") 
+                {
+                    $separated = explode('@', $separatedItems[$pos]);
+                    if (count($separated) !== 2)
+                        return false;
+                    
+                    if ($separated[0] == 'nil')
+                    {
+                        if ($separated[1] !== 'nil')
+                        {
+                            return false;
+                        }
+                    }
+                    else if ($separated[0] == 'string')
+                    {
+                        if (!preg_match("/^([^\\\\\s#]|\\\\\d{3})*$/", $separated[1]))
+                        {
+                            return false;
+                        }
+						else
+						{
+							preg_replace("/</", "&lt", $separated[1]);
+							preg_replace("/>/", "&gt", $separated[1]);
+							preg_replace("/&/", "&amp", $separated[1]);
+						}
+                    }
+                    else if ($separated[0] == 'int')
+                    {
+                        if (!preg_match("/^[\-\+][1-9]+[0-9]*$|^[1-9][0-9]*$|^0$/", $separated[1]))
+                        {
+                            return false;
+                        }
+                    }
+                    else if ($separated[0] == 'bool')
+                    {
+                        if (!preg_match("/^(true|false)$/", $separated[1]))
+                        {
+                            return false;
+                        } 
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                    XMLFileWriter::addArg($pos, $separated[0], $separated[1]);
+                }
+
+                $pos++;
+            }
+			XMLFileWriter::endElement();
+        }
+
+        return true;
+    }
+
+}
+
+/**
+ * @brief Loads and checks program arguments
+ */
 function loadArguments()
 {
     global $argc;
@@ -33,244 +290,13 @@ function loadArguments()
     }
 }
 
-class InstructionChecker
-{
-    private $opcode;
-    private $args = [];
-    private $firstLine = true;
-
-    public function checkSyntax($separetedItems)
-    {
-        if ($this->firstLine)
-        {
-            if (empty($separetedItems))
-            {
-                fprintf(STDERR, "ERROR: Missing header!");
-                exit(21);
-            }
-            else if ((count($separetedItems) == 1) && ($separetedItems[0] == ".IPPcode22"))
-            {
-                $this->firstLine = false;
-                return;
-            }
-            else
-            {
-                fprintf(STDERR, "ERROR: Wrong header!");
-                exit(21);
-            }
-        }
-
-        if ($this->checkItemsCount($separetedItems) == false)
-        {
-            fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22);
-        }
-
-        if ($this->processArgs($separetedItems) == false)
-        {
-            fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22);
-        }
-
-        return;
-    }
-
-    private function checkItemsCount($separetedItems)
-    {
-        if (empty($separetedItems))
-        {
-            return false;
-        }
-
-        $this->opcode = strtoupper($separetedItems[0]);
-
-        switch ($this->opcode) {
-            // zero args
-            case "CREATEFRAME":
-            case "PUSHFRAME":
-            case "POPFRAME":
-            case "RETURN":
-            case "BREAK":
-                if (count($separetedItems) !== 1)
-                {
-                    return false;
-                }
-                $this->args = [];
-                break;
-            // <label>
-            case "LABEL":
-            case "JUMP":
-            case "CALL":
-                if (count($separetedItems) !== 2)
-                {
-                    return false;
-                }
-                $this->args = ["label"];
-                break;
-            // <symb>
-            case "EXIT":
-            case "DPRINT":
-            case "WRITE":
-            case "PUSHS":
-                if (count($separetedItems) !== 2)
-                {
-                    return false;
-                }
-                $this->args = ["symb"];
-                break;
-            // <var>
-            case "DEFVAR":
-            case "POPS":
-                if (count($separetedItems) !== 2)
-                {
-                    return false;
-                }
-                $this->args = ["var"];
-                break;
-            // <var> <symb>
-            case "TYPE":
-            case "STRLEN":
-            case "INT2CHAR":
-                if (count($separetedItems) !== 3)
-                {
-                    return false;
-                }
-                $this->args = ["var", "symb"];
-                break;
-            // <var> <type>
-            case "READ":
-                if (count($separetedItems) !== 3)
-                {
-                    return false;
-                }
-                $this->args = ["var", "type"];
-                break;
-            // <label> <symb> <symb> jumps
-            case "JUMPIFEQ":
-            case "JUMPIFNEQ":
-                if (count($separetedItems) !== 4)
-                {
-                    return false;
-                }
-                $this->args = ["label", "symb", "symb"];
-                break;
-            // <var> <symb> <symb>
-            case "AND":
-            case "OR":
-            case "NOT":
-            case "LT":
-            case "GT":
-            case "EQ":
-            case "IDIV":
-            case "MUL":
-            case "SUB":
-            case "ADD":
-            case "STRI2INT":
-                if (count($separetedItems) !== 4)
-                {
-                    return false;
-                }
-                $this->args = ["var", "symb", "symb"];
-                break;
-            default:
-                return false;
-        }
-
-        return true;
-    }
-
-    private function processArgs($separetedItems)
-    {
-        // generate opcode instruction
-        XMLFileWriter::addInstruction($this->opcode);
-        
-        // only opcode
-        if (count($this->args) == 0)
-        {
-            XMLFileWriter::endElement();
-        }
-        else
-        {
-            $pos = 1;
-            foreach($this->args as $arg)
-            {
-                if ($arg == "label")
-                {
-                    if (!preg_match("/^[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separetedItems[$pos]))
-                        return false;
-                    
-                    XMLFileWriter::addArg($pos, $arg, $separetedItems[$pos]);
-                }
-                else if ($arg == "var" || ($arg == "symb" && preg_match("/^(GF|LF|TF)/", $separetedItems[$pos])))
-                {
-                    if (!preg_match("/^(GF|LF|TF)@[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separetedItems[$pos]))
-                        return false;
-
-                    XMLFileWriter::addArg($pos, $arg, $separetedItems[$pos]);
-                }
-                else if($arg == "symb") 
-                {
-                    $separeted = explode('@', $separetedItems[$pos]);
-                    if (count($separeted) !== 2)
-                        return false;
-                    
-                    if ($separeted[0] == 'nil')
-                    {
-                        if ($separeted[1] !== 'nil')
-                        {
-                            return false;
-                        }
-                    }
-                    else if ($separeted[0] == 'string')
-                    {
-                        if (!preg_match("/^([^\\\\\s#]|\\\\\d{3})*$/", $separeted[1]))
-                        {
-                            return false;
-                        }
-						else
-						{
-							preg_replace("/</", "&lt", $separeted[1]);
-							preg_replace("/>/", "&gt", $separeted[1]);
-							preg_replace("/&/", "&amp", $separeted[1]);
-						}
-                    }
-                    else if ($separeted[0] == 'int')
-                    {
-                        if (!preg_match("/^[\-\+][1-9]+[0-9]*$|^[1-9][0-9]*$|^0$/", $separeted[1]))
-                        {
-                            return false;
-                        }
-                    }
-                    else if ($separeted[0] == 'bool')
-                    {
-                        if (!preg_match("/^(true|false)$/", $separeted[1]))
-                        {
-                            return false;
-                        } 
-                    }
-                    else
-                    {
-                        return false;
-                    }
-
-                    XMLFileWriter::addArg($pos, $separeted[0], $separeted[1]);
-                }
-
-                $pos++;
-            }
-			XMLFileWriter::endElement();
-        }
-
-        return true;
-    }
-
-}
-
-// Main function
+/**
+* @brief Loads and processes source code from stdin
+*/
 function loadSourceCode()
 {
     XMLFileWriter::XMLFileWriter();
-    $instructionChecker = new InstructionChecker();
+    $instructionParser = new InstructionParser();
     
     while ($line = fgets(STDIN))
     {        
@@ -278,23 +304,31 @@ function loadSourceCode()
         $line = preg_replace('/#.*/', '', $line);
 
         // replace multiple spaces with one and remove space from the end
-        // TODO: remove spaces from the beginning
         $line = preg_replace('/\s+/', ' ', $line);
-        if ($line[strlen($line)-1] == ' ')
+        if (strlen($line) > 0 && $line[strlen($line)-1] == ' ')
         {
             $line = rtrim($line, ' ');
+        }
+        // remove space from the beginning
+        if (strlen($line) > 0 && $line[0] == ' ')
+        {
+            $line = ltrim($line, ' ');
         }
 
         // only if line contains header of some code
         if (strlen($line) > 0)
         {
-            $separetedItems = explode(' ', $line);
-            $instructionChecker->checkSyntax($separetedItems);
+            $separatedItems = explode(' ', $line);
+            $instructionParser->checkSyntax($separatedItems);
         }
-
-        // TODO: if file is empty without header
     }
-	print("[+] Closing XML body");
+    if ($instructionParser->firstLine)
+    {
+        fprintf(STDERR, "ERROR: Missing header!");
+        exit(21);
+    }
+
+	//print("[+] Closing XML body");
     XMLFileWriter::endXMLBody();
 }
 
