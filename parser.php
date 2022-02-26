@@ -63,13 +63,13 @@ class InstructionChecker
         if ($this->checkItemsCount($separetedItems) == false)
         {
             fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22); // 23?
+            exit(22);
         }
 
         if ($this->processArgs($separetedItems) == false)
         {
             fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22); // 23?
+            exit(22);
         }
 
         return;
@@ -223,11 +223,16 @@ class InstructionChecker
                     }
                     else if ($separeted[0] == 'string')
                     {
-                        // TODO: string literal regex
-                        if (!preg_match("/^[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separetedItems[$pos]))
+                        if (!preg_match("/^([^\\\\\s#]|\\\\\d{3})*$/", $separeted[1]))
                         {
                             return false;
                         }
+						else
+						{
+							preg_replace("/</", "&lt", $separeted[1]);
+							preg_replace("/>/", "&gt", $separeted[1]);
+							preg_replace("/&/", "&amp", $separeted[1]);
+						}
                     }
                     else if ($separeted[0] == 'int')
                     {
@@ -248,14 +253,12 @@ class InstructionChecker
                         return false;
                     }
 
-                    print("idem generovat");
                     XMLFileWriter::addArg($pos, $separeted[0], $separeted[1]);
                 }
 
                 $pos++;
             }
-            XMLFileWriter::endElement();
-            XMLFileWriter::endXMLBody();
+			XMLFileWriter::endElement();
         }
 
         return true;
@@ -291,7 +294,7 @@ function loadSourceCode()
 
         // TODO: if file is empty without header
     }
-
+	print("[+] Closing XML body");
     XMLFileWriter::endXMLBody();
 }
 
