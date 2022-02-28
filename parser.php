@@ -194,11 +194,19 @@ class InstructionParser
                 }
                 else if ($arg == "var" || ($arg == "symb" && preg_match("/^(GF|LF|TF)/", $separatedItems[$pos])))
                 {
-                    if (!preg_match("/^(GF|LF|TF)@[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separatedItems[$pos]))
+                    if (!preg_match("/^(GF|LF|TF)@[a-zA-Z\_\-$&%\*\!\?](\S*)$/", $separatedItems[$pos]))
                         return false;
 
-                    XMLFileWriter::addArg($pos, $arg, $separatedItems[$pos]);
+                    XMLFileWriter::addArg($pos, "var", $separatedItems[$pos]);
                 }
+				else if($arg == "type")
+				{
+					if (!preg_match("/^(int|string|nil|bool)$/", $separatedItems[$pos]))
+					{
+						return false;	
+					}
+                    XMLFileWriter::addArg($pos, $arg, $separatedItems[$pos]);
+				}
                 else if($arg == "symb") 
                 {
                     $separated = explode('@', $separatedItems[$pos]);
@@ -302,8 +310,8 @@ function loadSourceCode()
     {        
         // remove comments
         $line = preg_replace('/#.*/', '', $line);
-
-        // replace multiple spaces with one and remove space from the end
+        
+		// replace multiple spaces with one and remove space from the end
         $line = preg_replace('/\s+/', ' ', $line);
         if (strlen($line) > 0 && $line[strlen($line)-1] == ' ')
         {
@@ -328,7 +336,6 @@ function loadSourceCode()
         exit(21);
     }
 
-	//print("[+] Closing XML body");
     XMLFileWriter::endXMLBody();
 }
 

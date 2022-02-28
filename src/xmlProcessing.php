@@ -19,7 +19,7 @@ class XMLFileWriter{
 
         // Program tag
         self::$xml->startElement('program');
-        self::$xml->writeAttribute('language', 'IPPCode22');
+        self::$xml->writeAttribute('language', 'IPPcode22');
     }
 
     /**
@@ -63,8 +63,7 @@ class XMLFileWriter{
         self::$xml->endElement();
         
         self::$xml->endDocument();
-        file_put_contents('output.xml', self::$xml->outputMemory());
+		fwrite(STDOUT, self::$xml->flush());
     }
-
 }
 ?>
