@@ -1,5 +1,3 @@
-from msilib.schema import Error
-import tempfile
 import xml.etree.ElementTree as ET
 import sys, re
 
@@ -82,6 +80,18 @@ class Instruction:
         self.args = []
         self.types = []
         self.no_args = 0
+
+
+class Variable:
+    def __init__(self, name, frame):
+        self.name = name
+        self.value = None
+        self.type = None
+        self.frame = frame
+
+    def add_value(self, value, type):        
+        self.value = value
+        self.value = type
 
 
 class Interpret:
@@ -216,7 +226,7 @@ class Interpret:
     def check_XML_root(self):
         # check root tag
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
-            self.print_error("ERROR: Program is not the root tag or wrong attributes!", 32)
+            ErrorMessages.exit_code(32)
     
         print("[+] Root tag OK")
 
@@ -229,7 +239,7 @@ class Interpret:
         try:
             self.code[:] = sorted(self.code, key=lambda child: (int(child.get("order"))))
         except:
-            self.print_error("ERROR: Wrong XML format.", 32)
+            ErrorMessages.exit_code(32)
 
         print("[+] Sorting ...")
 
@@ -241,7 +251,7 @@ class Interpret:
             instruction.order = tag.attrib.get("order")
             instruction.opcode = tag.attrib.get("opcode").upper()
         except:
-            self.print_error("ERROR: Invalid tag!", 32)
+            ErrorMessages.exit_code(32)
 
         no_args = self.INSTRUCTIONS[instruction.opcode]
 
@@ -257,7 +267,7 @@ class Interpret:
         if instruction.opcode == "LABEL":
                 label_name = tag.find("arg1").text
                 if label_name in self.labels:
-                    self.print_error("ERROR: Label duplicate!", 52)
+                    ErrorMessages.exit_code(52)
                 else:
                     self.labels[label_name] = position
 
@@ -271,7 +281,7 @@ class Interpret:
         for child in self.code:
             order = int(child.attrib.get("order"))
             if order <= 0 or order == previous_order:
-               self.print_error("ERROR: Invalid order attribute!", 32)
+               ErrorMessages.exit_code(32)
             previous_order = order
 
             self.parse_instruction(child, position)
