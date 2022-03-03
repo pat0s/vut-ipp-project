@@ -149,7 +149,16 @@ class Interpret:
         
         elif argc == 2:
             if argv[1] == "--help":
-                print("This is help")
+                print("\nScript loads XML representation of source code")
+                print("interprets it and generates output.")
+                print("\nUsage:")
+                print("         python3 interpret.py")
+                print("         python3 interpret.py --help")
+                print("         python3 interpret.py [--source=file] [--input=file]")
+                print("Options:")
+                print("         --help          print help and exit program")
+                print("         --source=file   input source code XML")
+                print("         --input=file    file with inputs for interpret")
                 sys.exit(0)
             elif re.search(r"^--source=.+$", argv[1]):
                 self.source = re.findall(r"(?<=\=).*", argv[1])[0]
