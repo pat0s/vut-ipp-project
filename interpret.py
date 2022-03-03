@@ -1,8 +1,78 @@
+from msilib.schema import Error
+import tempfile
 import xml.etree.ElementTree as ET
-# for argv
 import sys, re
 
-from numpy import sort
+
+class ErrorMessages:
+    
+    @staticmethod
+    def exit_code(err_code):
+        
+        ERRORS = {
+        31 : "ERORR: Invalid XML format of input file",
+        32 : "ERROR: Unexpected XML structure",
+        52 : "SEMATIC ERROR: ...",
+        53 : "RUNTIME ERROR: Wrong types of operands",
+        54 : "RUNTIME ERROR: Undefined variable",
+        55 : "RUNTIME ERROR: Undefined frame",
+        56 : "RUNTIME ERROR: Missing value",
+        57 : "RUNTIME ERROR: Invalid operand value",
+        58 : "RUNTIME ERROR: Invalid string operation"
+        }
+
+        print(ERRORS[err_code], file=sys.stderr)
+        exit(err_code)
+
+
+class Frames:
+    def __init__(self):
+        self.framesStack = []
+        self.globalFrame = {}
+        self.tmpFrame = None
+
+    def create_frame(self):
+        self.tmpFrame = {}
+
+    def push_frame(self):
+        if self.tmpFrame is None:
+            ErrorMessages.exit_code(55)
+        
+        self.framesStack.append(self.tmpFrame)
+        self.tmpFrame = None
+
+    def pop_frame(self):
+        if not self.framesStack:
+            ErrorMessages.exit_code(55)
+
+        self.tmpFrame = self.framesStack.pop()
+
+    def find_var(self, varName, frame):
+        if frame == "GF":
+            if varName in self.globalFrame:
+                return self.globalFrame[varName]
+        elif frame == "LF": 
+            if not self.framesStack:
+                ErrorMessages.exit_code(55)
+            if varName in self.framesStack[-1]:
+                return self.framesStack[-1][varName]
+        elif frame == "TF":
+            if self.tmpFrame == None:
+                ErrorMessages.exit_code(55)
+            if varName in self.tmpFrame: 
+                return self.tmpFrame[varName]
+
+        return None
+
+    def add_var(self, varName, frame):
+        if self.find_var(varName, frame):
+            ErrorMessages.exit_code(52)
+        if frame == "GF":
+            self.globalFrame[varName] = "Undefined"
+        elif frame == "LF":
+            self.framesStack[-1][varName] = "Undefined"
+        elif frame == "TF":
+            self.tmpFrame[varName] = "Undefined"
 
 
 class Instruction:
@@ -59,6 +129,10 @@ class Interpret:
         self.code = ""
         # parsed code to instructions
         self.instructionsArray = []
+        # jump and call stack
+        self.callStack = []
+        # instruction counter
+        self.instructionCounter = 0
 
 
     def print_error(self, err_msg, err_code):
@@ -133,7 +207,7 @@ class Interpret:
     def check_XML_root(self):
         # check root tag
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
-            self.print_error("ERROR: Program is not the root tag", 32)
+            self.print_error("ERROR: Program is not the root tag or wrong attributes!", 32)
     
         print("[+] Root tag OK")
 
@@ -156,7 +230,7 @@ class Interpret:
         
         try: 
             instruction.order = tag.attrib.get("order")
-            instruction.opcode = tag.attrib.get("opcode").upper() # TODO: error or upper()
+            instruction.opcode = tag.attrib.get("opcode").upper()
         except:
             self.print_error("ERROR: Invalid tag!", 32)
 
@@ -174,7 +248,7 @@ class Interpret:
         if instruction.opcode == "LABEL":
                 label_name = tag.find("arg1").text
                 if label_name in self.labels:
-                    self.print_error("ERROR: Label duplicate!", 32)
+                    self.print_error("ERROR: Label duplicate!", 52)
                 else:
                     self.labels[label_name] = position
 
@@ -205,3 +279,24 @@ class Interpret:
 interpret = Interpret()
 interpret.load_args()
 interpret.load_source_code()
+
+
+########################## TESTS ##########################
+
+# TESTS for frames
+# frame = Frames()
+# frame.create_frame()
+# frame.add_var("ahoj", "TF")
+# print("LF:", frame.framesStack)
+# print("TF:", frame.tmpFrame)
+# frame.push_frame()
+# frame.add_var("cau", "LF")
+# print("LF:", frame.framesStack[-1])
+# print("TF:", frame.tmpFrame)
+
+# print("GF:", frame.globalFrame)
+# frame.add_var("global", "GF")
+# print("GF:", frame.globalFrame)
+# print(frame.find_var("ahoj", "TF"))
+# print(frame.find_var("global", "GF"))
+# print(frame.find_var("global", "TF"))
