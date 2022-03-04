@@ -11,8 +11,8 @@ $cleanTmp = true;
 
 $argc;
 $argv;
-$shortopts = 'h:d:r:p:i:j:n';
-$longopts =  ["help", "directory", "recursive", "parse-script", "int-script", "parse-only", "int-only", "jexampath", "noclean"];
+$shortopts = 'hd:rp:i:j:n';
+$longopts =  ["help", "directory:", "recursive", "parse-script:", "int-script:", "parse-only", "int-only", "jexampath:", "noclean"];
 $args = getopt($shortopts, $longopts);
 
 if (count($args) != (count($argv) - 1))
@@ -20,6 +20,8 @@ if (count($args) != (count($argv) - 1))
     fprintf(STDERR, "ERROR: Wrong argument/-s");
     exit(10);
 }
+
+
 
 // TODO: neviem, ci je potrebne osetrovat aj pocet argumentov pri tom, ked bude help
 if (array_key_exists('help', $args) || array_key_exists('h', $args))
@@ -51,7 +53,7 @@ if (array_key_exists('recursive', $args) || array_key_exists('r', $args))
 
 if (array_key_exists('parse-script', $args) || array_key_exists('p', $args))
 {
-    $parser = $isset($args['p']) ? $args['p'] : $args['parse-script'];
+    $parser = isset($args['p']) ? $args['p'] : $args['parse-script'];
 }
 
 if (array_key_exists('int-script', $args) || array_key_exists('i', $args))
