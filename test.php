@@ -15,13 +15,11 @@ $shortopts = 'hd:rp:i:j:n';
 $longopts =  ["help", "directory:", "recursive", "parse-script:", "int-script:", "parse-only", "int-only", "jexampath:", "noclean"];
 $args = getopt($shortopts, $longopts);
 
-if (count($args) != (count($argv) - 1))
+if (count($args) != (count($argv) - 1) || count($args) > 7)
 {
     fprintf(STDERR, "ERROR: Wrong argument/-s");
     exit(10);
 }
-
-
 
 // TODO: neviem, ci je potrebne osetrovat aj pocet argumentov pri tom, ked bude help
 if (array_key_exists('help', $args) || array_key_exists('h', $args))
@@ -58,7 +56,7 @@ if (array_key_exists('parse-script', $args) || array_key_exists('p', $args))
 
 if (array_key_exists('int-script', $args) || array_key_exists('i', $args))
 {
-    $$interpret = isset($args['i']) ? $args['i'] : $args['int-script'];
+    $interpret = isset($args['i']) ? $args['i'] : $args['int-script'];
 }
 
 if (array_key_exists('parse-only', $args))
@@ -89,6 +87,7 @@ if (array_key_exists('int-only', $args))
 if (array_key_exists('jexampath', $args))
 {
     $jexamdir = $args['jexampath'];
+    if ($jexamdir[-1] != '/') $jexamdir = $jexamdir.'/';
 }
 
 if (array_key_exists('noclean', $args))
@@ -96,8 +95,81 @@ if (array_key_exists('noclean', $args))
     $cleanTmp = false;
 }
 
-
-// TODO: pozor na konci nemusi byt -> /
 $jexamexe = $jexamdir.'jexamxml.jar';
+
+// Iterator or Recursive Iterator
+$directoryIter = new RecursiveDirectoryIterator($path);
+if ($recursive)
+{
+    $iterator = new RecursiveIteratorIterator($directoryIter);
+}
+else
+{
+    $iterator = new IteratorIterator($directoryIter);
+}
+
+$regexIter = new RegexIterator($iterator, "/^.+\.src$/");
+
+// Load and save tests files
+$tests = [];
+foreach($regexIter as $file)
+{
+    // ^(\..*\\\\)(.+)(?=\.)\.src$, ^(\..*\\\\)(.+)\.src$ - Windows
+    // ^(\..*\/)(.+)(?=\.)\.src$, ^(\..*\/)(.+)\.src$ - Linux
+    $testName = preg_replace("/^(\..*\\\\)(.+)\.src$/", "\\2", $file);
+    $testDir = preg_replace("/^(\..*\\\\)(.+)\.src$/", "\\1", $file);
+
+    if (!array_key_exists($testDir, $tests))
+    {
+        $tests[$testDir] = [];
+
+    }
+    array_push($tests[$testDir], $testName);
+}
+array_multisort($tests);
+
+// Execute tests
+foreach($tests as $dirName => $dir)
+{
+    foreach($dir as $file)
+    {
+        $srcFile = $dirName.$file.'.src';
+        $rcFile = $dirName.$file.'.rc';
+        $inFile = $dirName.$file.'.in';
+        $outFile = $dirName.$file.'.out';
+        $myOutFile = $dirName.$file.'.my_out';
+        
+        // Parser only
+        if ($parserOnly)
+        {
+            unset($exitCode);
+            //exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile, '', $exitCode);
+            if ($exitCode == 0)
+            {
+                unset($output);
+                unset($exitCode);
+                //exec('java -jar'.$jexamexe.' '.$outFile.' '.$myOutFile, $output, $exitCode);
+            }
+        }
+        // Interpret only
+        else if ($interpretOnly)
+        {
+            unset($output);
+            unset($exitCode);
+            //exec('python3.8 '.$interpret.' --source='.$srcFile.' < '.$inFile.' > '.$myOutFile, '', $exitCode);
+            if ($output == 0)
+            {
+                unset($output);
+                unset($exitCode);
+                //exec('diff '.$outFile.' '.$myOutFile, $output, $exitCode);   
+            }
+        }
+        // Both
+        else{
+
+        }
+    }
+ 
+}
 
 ?>
