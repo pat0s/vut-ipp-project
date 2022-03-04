@@ -113,7 +113,8 @@ class InstructionParser
                 $this->args = ["var"];
                 break;
             // <var> <symb>
-            case "TYPE":
+            case "MOVE":
+			case "TYPE":
             case "STRLEN":
             case "INT2CHAR":
                 if (count($separatedItems) !== 3)
@@ -151,6 +152,9 @@ class InstructionParser
             case "SUB":
             case "ADD":
             case "STRI2INT":
+			case "CONCAT":
+			case "GETCHAR":
+			case "SETCHAR":
                 if (count($separatedItems) !== 4)
                 {
                     return false;
