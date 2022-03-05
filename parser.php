@@ -213,7 +213,7 @@ class InstructionParser
 				}
                 else if($arg == "symb") 
                 {
-                    $separated = explode('@', $separatedItems[$pos]);
+                    $separated = explode('@', $separatedItems[$pos], 2);
                     if (count($separated) !== 2)
                         return false;
                     
