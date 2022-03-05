@@ -205,35 +205,151 @@ class Interpret:
             self.parse_instruction(child, position)
             position += 1
         
-        # TODO: remove
-        for i in range(len(self.instructionsArray)):
-            print(self.instructionsArray[i].opcode, ":", self.instructionsArray[i].types, "->", self.instructionsArray[i].args)
-        print()
-        
         print("[+] Save labels, check opcode sequence")
+
+    
+    ########################################
+    ######## FUNCTIONS for OPCODES #########
+    ########################################
+    
+    def PUSHS(self, instruction):
+        if instruction.types[0] == "var":
+            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+            if not var:
+                ErrorMessages.exit_code(54)
+                
+            self.callStack.append(var.value)
+        else:
+            self.callStack.append((instruction.args[0], instruction.types[0]))
+
+
+    def POPS(self, instruction):
+        if not self.callStack:
+            ErrorMessages.exit_code(56)
+            
+        var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+        if not var:
+            ErrorMessages.exit_code(54)
+        value, type = self.callStack.pop()
+        var.change_value(value, type)
+
+    
+    def WRITE(self, instruction : Instruction):
+        string = ""
+        if instruction.types[0] == "var":     
+            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)         
+            if var.value == None:
+                ErrorMessages.exit_code(56)
+            
+            string = var.value
+        else:
+            if instruction.types[0] != "nil":
+                string = instruction.args[0]
+
+        print(string, end="")  #, file=sys.stdout)
+
+    
+    def MOVE(self, instruction : Instruction):
+        scr = None
+        dest = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+        
+        if not dest:
+            ErrorMessages.exit_code(54)
+
+        if instruction.types[1] == "var":     
+            src = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
+            
+            if not src:
+                ErrorMessages.exit_code(54)         
+            if src.value == None:
+                ErrorMessages.exit_code(56)
+            
+            dest.change_value(src.value, src.type)
+        else:
+            dest.change_value(instruction.args[1], instruction.types[1])
+
+
+    def interpret_code(self):
+        # help variables
+        while self.instructionCounter < len(self.instructionsArray):
+            instruction = self.instructionsArray[self.instructionCounter]
+            opcode = instruction.opcode
+            
+            # MOVE
+            if opcode == "MOVE":
+                self.MOVE(instruction)
+            
+            # CREATEFRAME
+            elif opcode == "CREATEFRAME":
+                self.frames.create_frame()
+            
+            # PUSHFRAME
+            elif opcode == "PUSHFRAME":
+                self.frames.push_frame()
+
+            # POPFRAME
+            elif opcode == "POPFRAME":
+                self.frames.pop_frame()
+
+            # DEFVAR
+            elif opcode == "DEFVAR":
+                self.frames.add_var(instruction.args[0][0], instruction.args[0][1])
+
+            # CALL
+            elif opcode == "CALL":
+                pass
+
+            # RETURN
+            elif opcode == "RETURN":
+                pass
+
+            # PUSHS
+            elif opcode == "PUSHS":
+                self.PUSHS(instruction)
+                    
+            # POPS
+            elif opcode == "POPS":
+                self.POPS(instruction)
+            
+            # ADD
+            elif opcode == "ADD":
+                pass
+            elif opcode == "SUB":
+                pass
+            elif opcode == "MUL":
+                pass
+            elif opcode == "IDIV":
+                pass
+            elif opcode == "LT":
+                pass
+            elif opcode == "GT":
+                pass
+            elif opcode == "EQ":
+                pass
+            elif opcode == "AND":
+                pass
+            elif opcode == "OR":
+                pass
+            elif opcode == "NOT":
+                pass
+            elif opcode == "INT2CHAR":
+                pass
+            elif opcode == "STR2INT":
+                pass
+
+            # WRITE
+            elif opcode == "WRITE":
+                self.WRITE(instruction)
+
+            self.instructionCounter += 1
+        
+        exit(0)
 
 
 interpret = Interpret()
 interpret.load_args()
 interpret.load_source_code()
-
-
-########################## TESTS ##########################
-
-# TESTS for frames
-# frame = Frames()
-# frame.create_frame()
-# frame.add_var("ahoj", "TF")
-# print("LF:", frame.framesStack)
-# print("TF:", frame.tmpFrame)
-# frame.push_frame()
-# frame.add_var("cau", "LF")
-# print("LF:", frame.framesStack[-1])
-# print("TF:", frame.tmpFrame)
-
-# print("GF:", frame.globalFrame)
-# frame.add_var("global", "GF")
-# print("GF:", frame.globalFrame)
-# print(frame.find_var("ahoj", "TF"))
-# print(frame.find_var("global", "GF"))
-# print(frame.find_var("global", "TF"))
+interpret.interpret_code()
