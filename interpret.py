@@ -212,6 +212,13 @@ class Interpret:
     ######## FUNCTIONS for OPCODES #########
     ########################################
     
+    def RETURN_PRG(self):
+        if self.callStack:
+            self.instructionCounter = self.callStack.pop()
+        else:
+            ErrorMessages.exit_code(56)
+
+
     def PUSHS(self, instruction):
         if instruction.types[0] == "var":
             var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
@@ -271,6 +278,116 @@ class Interpret:
         else:
             dest.change_value(instruction.args[1], instruction.types[1])
 
+    
+    def TYPE(self, instruction : Instruction):
+        varType = ""
+        if instruction.types[1] == "var":     
+            var = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)         
+            if var.type:
+                varType = var.type
+        else:
+            if instruction.types[1] != "nil":
+                varType = instruction.types[1]
+
+        var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+        if not var:
+            ErrorMessages.exit_code(54)         
+            
+        var.change_value(varType, "string")
+
+    
+    
+    def JUMP(self, label):
+
+        if label not in self.labels:
+            ErrorMessages.exit_code(52)
+
+        self.instructionCounter = self.labels[label] - 1
+
+    
+    def JUMPIF(self, instruction : Instruction, equal):
+        type1, type2, value1, value2 = None, None, None, None
+        if instruction.types[1] == "var":
+            var = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)
+
+            if var.type == "nil":
+                self.JUMP(instruction.args[0])
+                return
+            type1, value1 = var.type, var.value
+        else:
+            if instruction.types[1] == "nil":
+                self.JUMP(instruction.args[0])
+                return
+            type1, value1 = instruction.types[1], instruction.args[1]
+
+        if instruction.types[2] == "var":
+            var = self.frames.find_var(instruction.args[2][0], instruction.args[2][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)
+
+            if var.type == "nil":
+                self.JUMP(instruction.args[0])
+                return
+            type2, value2 = var.type, var.value
+        else:
+            if instruction.types[2] == "nil":
+                self.JUMP(instruction.args[0])
+                return
+            type1, value1 = instruction.types[2], instruction.args[2]
+
+        if type1 == type2:
+            if (equal and value1 == value2) or (not equal and value1 != value2):
+                self.JUMP(instruction.args[0])
+
+
+    def EXIT_PRG(self, instruction : Instruction):
+        if instruction.types[0] == "var":     
+            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)         
+            
+            if var.type == "int" and var.value >= 0 and var.value <= 49:
+                exit(var.value)
+        else:
+            if instruction.types[0] == "int" and int(instruction.args[0]) >= 0 and int(instruction.args[0]) <= 49:
+                exit(int(instruction.args[0]))
+
+        ErrorMessages.exit_code(57)
+
+
+    def DPRINT(self, instruction):
+        string = ""
+        if instruction.types[0] == "var":     
+            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
+            
+            if not var:
+                ErrorMessages.exit_code(54)         
+            if var.value == None:
+                ErrorMessages.exit_code(56)
+            
+            string = var.value
+        else:
+            if instruction.types[0] != "nil":
+                string = instruction.args[0]
+
+        print(string, file=sys.stderr)    
+
+    
+    def BREAK_PRG(self):
+        print("Instruction counter:", self.instructionCounter, file=sys.stderr)
+        print("GF:", self.frames.globalFrame, file=sys.stderr)
+        print("TF:", self.frames.tmpFrame, file=sys.stderr)
+        #print("LF:", self.frames, file=sys.stderr)
+        print("Labels list:", self.labels,file=sys.stderr)
+
 
     def interpret_code(self):
         # help variables
@@ -300,11 +417,13 @@ class Interpret:
 
             # CALL
             elif opcode == "CALL":
-                pass
+                self.callStack.append(self.instructionCounter+1)
+                self.JUMP(instruction.args[0])
 
             # RETURN
             elif opcode == "RETURN":
-                pass
+                self.RETURN_PRG()
+                continue
 
             # PUSHS
             elif opcode == "PUSHS":
@@ -317,32 +436,106 @@ class Interpret:
             # ADD
             elif opcode == "ADD":
                 pass
+            
+            # SUB
             elif opcode == "SUB":
                 pass
+            
+            # MUL
             elif opcode == "MUL":
                 pass
+            
+            # IDIV
             elif opcode == "IDIV":
                 pass
+            
+            # LT
             elif opcode == "LT":
                 pass
+            
+            # GT
             elif opcode == "GT":
                 pass
+            
+            # EQ
             elif opcode == "EQ":
                 pass
+            
+            # AND
             elif opcode == "AND":
                 pass
+            
+            # OR
             elif opcode == "OR":
                 pass
+            
+            # NOT
             elif opcode == "NOT":
                 pass
+            
+            # INT2CHAR
             elif opcode == "INT2CHAR":
                 pass
+            
+            # STR2INT
             elif opcode == "STR2INT":
+                pass
+
+            # READ
+            elif opcode == "READ":
                 pass
 
             # WRITE
             elif opcode == "WRITE":
                 self.WRITE(instruction)
+
+            # CONCAT
+            elif opcode == "CONCAT":
+                pass
+
+            # STRLEN
+            elif opcode == "STRLEN":
+                pass
+
+            # GETCHAR
+            elif opcode == "GETCHAR":
+                pass
+
+            # SETCHAR
+            elif opcode == "SETCHAR":
+                pass
+
+            # TYPE
+            elif opcode == "TYPE":
+                self.TYPE(instruction)
+            
+            # LABEL
+            elif opcode == "LABEL":
+                pass
+
+            # JUMP
+            elif opcode == "JUMP":
+                self.JUMP(instruction.args[0])
+
+            # JUMPIFEQ
+            elif opcode == "JUMPIFEQ":
+                self.JUMPIF(instruction, True)
+
+            # JUMPIFNEQ
+            elif opcode == "JUMPIFNEQ":
+                self.JUMPIF(instruction, False)
+
+            # JUMP
+            elif opcode == "EXIT":
+                self.EXIT_PRG(instruction)
+
+            # JUMP
+            elif opcode == "DPRINT":
+                self.DPRINT(instruction)
+
+            # JUMP
+            elif opcode == "BREAK":
+                self.BREAK_PRG()
 
             self.instructionCounter += 1
         

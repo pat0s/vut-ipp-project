@@ -8,7 +8,10 @@ class Variable:
         self.type = None
         self.frame = frame
 
-    def change_value(self, value, type):        
+    def change_value(self, value, type):
+        if type == "int":
+            value = int(value)        
+        
         self.value = value
         self.type = type
 
