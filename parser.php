@@ -44,13 +44,13 @@ class InstructionParser
         if ($this->checkItemsCount($separatedItems) == false)
         {
             fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22);
+            exit(23);
         }
 
         if ($this->processArgs($separatedItems) == false)
         {
             fprintf(STDERR, "ERROR: Lexical or syntax!");
-            exit(22);
+            exit(23);
         }
     }
 
@@ -162,7 +162,8 @@ class InstructionParser
                 $this->args = ["var", "symb", "symb"];
                 break;
             default:
-                return false;
+                fprintf(STDERR, "ERROR: Unknown opcode!");
+                exit(22);
         }
 
         return true;
