@@ -1,101 +1,12 @@
 import xml.etree.ElementTree as ET
 import sys, re
 
-
-class ErrorMessages:
-    
-    @staticmethod
-    def exit_code(err_code):
-        
-        ERRORS = {
-        31 : "ERORR: Invalid XML format of input file",
-        32 : "ERROR: Unexpected XML structure",
-        52 : "SEMATIC ERROR: ...",
-        53 : "RUNTIME ERROR: Wrong types of operands",
-        54 : "RUNTIME ERROR: Undefined variable",
-        55 : "RUNTIME ERROR: Undefined frame",
-        56 : "RUNTIME ERROR: Missing value",
-        57 : "RUNTIME ERROR: Invalid operand value",
-        58 : "RUNTIME ERROR: Invalid string operation"
-        }
-
-        print(ERRORS[err_code], file=sys.stderr)
-        exit(err_code)
-
-
-class Frames:
-    def __init__(self):
-        self.framesStack = []
-        self.globalFrame = {}
-        self.tmpFrame = None
-
-    def create_frame(self):
-        self.tmpFrame = {}
-
-    def push_frame(self):
-        if self.tmpFrame is None:
-            ErrorMessages.exit_code(55)
-        
-        self.framesStack.append(self.tmpFrame)
-        self.tmpFrame = None
-
-    def pop_frame(self):
-        if not self.framesStack:
-            ErrorMessages.exit_code(55)
-
-        self.tmpFrame = self.framesStack.pop()
-
-    def find_var(self, varName, frame):
-        if frame == "GF":
-            if varName in self.globalFrame:
-                return self.globalFrame[varName]
-        elif frame == "LF": 
-            if not self.framesStack:
-                ErrorMessages.exit_code(55)
-            if varName in self.framesStack[-1]:
-                return self.framesStack[-1][varName]
-        elif frame == "TF":
-            if self.tmpFrame == None:
-                ErrorMessages.exit_code(55)
-            if varName in self.tmpFrame: 
-                return self.tmpFrame[varName]
-
-        return None
-
-    def add_var(self, varName, frame):
-        if self.find_var(varName, frame):
-            ErrorMessages.exit_code(52)
-        if frame == "GF":
-            self.globalFrame[varName] = "Undefined"
-        elif frame == "LF":
-            self.framesStack[-1][varName] = "Undefined"
-        elif frame == "TF":
-            self.tmpFrame[varName] = "Undefined"
-
-
-class Instruction:
-    def __init__(self):
-        self.opcode = ""
-        self.order = -1
-        self.args = []
-        self.types = []
-        self.no_args = 0
-
-
-class Variable:
-    def __init__(self, name, frame):
-        self.name = name
-        self.value = None
-        self.type = None
-        self.frame = frame
-
-    def add_value(self, value, type):        
-        self.value = value
-        self.value = type
-
+from src_interpret.error import ErrorMessages
+from src_interpret.components import *
 
 class Interpret:
-    INSTRUCTIONS = {"CREATEFRAME" : 0, 
+    INSTRUCTIONS = {"MOVE" : 2,
+                    "CREATEFRAME" : 0, 
                     "PUSHSFRAME" : 0,
                     "POPFRAME" : 0,
                     "RETURN" : 0,
@@ -143,6 +54,8 @@ class Interpret:
         self.callStack = []
         # instruction counter
         self.instructionCounter = 0
+        # frames class
+        self.frames = Frames()
 
 
     def print_error(self, err_msg, err_code):
@@ -257,8 +170,13 @@ class Interpret:
 
         for i in range(no_args):
             arg = tag.find(f"arg{i+1}")
-            instruction.args.append(arg.text)
-            instruction.types.append(arg.attrib.get("type"))
+            type = arg.attrib.get("type")
+            if type == "var":
+                frame, name = arg.text.split('@')
+                instruction.args.append([name, frame])
+            else:
+                instruction.args.append(arg.text)
+            instruction.types.append(type)
             instruction.no_args += 1
 
         self.instructionsArray.append(instruction)
