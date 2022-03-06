@@ -1,3 +1,4 @@
+from msilib.schema import Error
 import xml.etree.ElementTree as ET
 import sys, re
 
@@ -28,7 +29,7 @@ class Interpret:
                     "JUMPIFNEQ" : 3,
                     "AND" : 3,
                     "OR" : 3,
-                    "NOT" : 3,
+                    "NOT" : 2,
                     "LT" : 3,
                     "GT" : 3,
                     "EQ" : 3,
@@ -36,7 +37,10 @@ class Interpret:
                     "MUL" : 3,
                     "SUB" : 3,
                     "ADD" : 3,
-                    "STR2INT" : 3
+                    "STRI2INT" : 3,
+                    "CONCAT" : 3,
+                    "GETCHAR" : 3,
+                    "SETCHAR" : 3
                 }
 
     def __init__(self):
@@ -156,6 +160,11 @@ class Interpret:
 
         print("[+] Sorting ...")
 
+    
+    def escape_seq_to_string(self, escape_seq):
+        pass
+
+
     def parse_instruction(self, tag, position):    
         # instruction instance
         instruction = Instruction()
@@ -175,7 +184,13 @@ class Interpret:
                 frame, name = arg.text.split('@')
                 instruction.args.append([name, frame])
             else:
-                instruction.args.append(arg.text)
+                text = arg.text
+                
+                # TODO
+                #if type == "string":
+                #    text = self.escape_seq_to_string(text)
+                instruction.args.append(text)
+            
             instruction.types.append(type)
             instruction.no_args += 1
 
@@ -212,6 +227,26 @@ class Interpret:
     ######## FUNCTIONS for OPCODES #########
     ########################################
     
+    def check_var(self, varName, varFrame, checkValue=False):
+        var = self.frames.find_var(varName, varFrame)
+        if not var:
+            ErrorMessages.exit_code(54)
+        if checkValue and var.value == None:
+            ErrorMessages.exit_code(56)
+        return var
+
+    
+    def MOVE(self, instruction : Instruction):
+        scr = None
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+
+        if instruction.types[1] == "var":     
+            src = self.check_var(instruction.args[1][0], instruction.args[1][1], True)         
+            dest.change_value(src.value, src.type)
+        else:
+            dest.change_value(instruction.args[1], instruction.types[1])
+
+    
     def RETURN_PRG(self):
         if self.callStack:
             self.instructionCounter = self.callStack.pop()
@@ -221,9 +256,7 @@ class Interpret:
 
     def PUSHS(self, instruction):
         if instruction.types[0] == "var":
-            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-            if not var:
-                ErrorMessages.exit_code(54)
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1])
                 
             self.callStack.append(var.value)
         else:
@@ -233,73 +266,327 @@ class Interpret:
     def POPS(self, instruction):
         if not self.callStack:
             ErrorMessages.exit_code(56)
-            
-        var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-        if not var:
-            ErrorMessages.exit_code(54)
+
+        var = self.check_var(instruction.args[0][0], instruction.args[0][1]) 
         value, type = self.callStack.pop()
         var.change_value(value, type)
 
+
+    # TODO: skontrolovat
+    def MATH_OPERATIONS(self, instruction : Instruction, operator):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        res, op2 = 0, 0
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            res += var.value
+        else:
+            if instruction.types[1] != "int":
+                ErrorMessages.exit_code(53)    
+            res += int(instruction.args[1])
+
+        if instruction.types[2] == "var":     
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            op2 = var.value
+        else:
+            if instruction.types[2] != "int":
+                ErrorMessages.exit_code(53)           
+            op2 = int(instruction.args[2])
+
+        # Choose operation
+        if operator == "+":
+            res += op2
+        elif operator == "-":
+            res -= op2
+        elif operator == "*":
+            res *= op2
+        elif operator == "/":
+            if op2 == 0:
+                ErrorMessages.exit_code(57)
+            res //= op2
+
+        dest.change_value(res, "int")
+
+
+    # TODO: otestovat
+    def COMPARE(self, instruction : Instruction, operator):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        val1, type1, val2, type2 = "", "", "", ""
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            val1, type1 = var.value, var.type
+        else:  
+            val1, type1 = instruction.args[1], instruction.type[1]
+
+        if instruction.types[2] == "var":     
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+            val2, type2 = var.value, var.type
+        else:  
+            val2, type2 = instruction.args[2], instruction.type[2]
+
+        res = ""
+        if type1 == type2:
+            if type1 == "nil" and operator != "=":
+                ErrorMessages.exit_code(53)
+            if type1 == "int":
+                val1, val2 = int(val1), int(val2)
+
+            # Choose operation
+            if operator == "<":
+                res = val1 < val2
+            elif operator == ">":
+                res = val1 > val2
+            else:
+                res = val1 == val2
+
+        else:
+            ErrorMessages.exit_code(53)
+
+        dest.change_value(str(res).lower(), "bool")
+
+
+    # TODO: otestovat
+    def LOGICAL_OP(self, instruction : Instruction, operator):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        op1, op2 = "", ""
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "bool":
+                ErrorMessages.exit_code(53)
+            op1 = var.value
+        else:
+            if instruction.types[1] != "bool":
+                ErrorMessages.exit_code(53)           
+            op1 = instruction.args[1]
+
+        if operator != "not":
+            if instruction.types[2] == "var":     
+                var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+                if var.type != "int":
+                    ErrorMessages.exit_code(53)
+                op2 = var.value
+            else:
+                if instruction.types[2] != "int":
+                    ErrorMessages.exit_code(53)           
+                op2 = instruction.args[2]
+
+        res = "false"
+        if operator == "not" and op1 == "false":
+            res = "true"
+        elif operator == "and":
+            if op1 == "true" and op2 == "true":
+                res = "true"
+        elif operator == "or":
+            if op1 == "true" or op2 == "true":
+                res = "true"
+
+        dest.change_value(res, "bool")
+
+
+    # TODO: otestovat
+    def INT2CHAR(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        char = ""
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            char = var.value
+        else:
+            if instruction.types[1] != "int":
+                ErrorMessages.exit_code(53)           
+            char = instruction.args[1]
+
+        try:
+            char = chr(int(char))
+        except:
+           ErrorMessages.exit_code(58)
+
+        dest.change_value(char, "string")
+
     
+    # TODO: otestovat
+    def STRI2CHAR(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        string, pos = "", -1
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "string":
+                ErrorMessages.exit_code(53)
+            string = var.value
+        else:
+            if instruction.types[1] != "string":
+                ErrorMessages.exit_code(53)           
+            string = instruction.args[1]
+
+        if instruction.types[2] == "var":     
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            pos = var.value
+        else:
+            if instruction.types[2] != "int":
+                ErrorMessages.exit_code(53)           
+            pos = int(instruction.args[2])
+
+        try:
+            res = ord(string[pos])
+        except:
+            ErrorMessages.exit_code(58)
+
+        dest.change_value(res, "int")
+        
+  
     def WRITE(self, instruction : Instruction):
         string = ""
         if instruction.types[0] == "var":     
-            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-            
-            if not var:
-                ErrorMessages.exit_code(54)         
-            if var.value == None:
-                ErrorMessages.exit_code(56)
-            
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
             string = var.value
         else:
             if instruction.types[0] != "nil":
                 string = instruction.args[0]
 
-        print(string, end="")  #, file=sys.stdout)
+        print(string, end="")
 
     
-    def MOVE(self, instruction : Instruction):
-        scr = None
-        dest = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-        
-        if not dest:
-            ErrorMessages.exit_code(54)
+    # TODO: otestovat chybove stavy
+    def CONCAT(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1]) 
+
+        res = ""
+        for i in range(1, 3):
+            if instruction.types[i] == "var":     
+                src = self.check_var(instruction.args[i][0], instruction.args[i][1], True)
+
+                if src.type != "string":
+                    ErrorMessages.exit_code(53)
+                res += src.value
+            else:
+                if instruction.types[i] != "string":
+                    ErrorMessages.exit_code(53)
+                res += instruction.args[i]
+
+        dest.change_value(res, "string") 
+
+
+    # TODO: otestovat chybove stavy
+    def STRLEN(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+
+        res = 0
+        if instruction.types[1] == "var":     
+            src = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+
+            if src.type != "string":
+                ErrorMessages.exit_code(53)
+            res = len(src.value)
+        else:
+            if instruction.types[1] != "string":
+                ErrorMessages.exit_code(53)
+            res = len(instruction.args[1])
+
+        dest.change_value(res, "int")
+
+
+    # TODO: otestovat
+    def GETCHAR(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        string, pos = "", -1
 
         if instruction.types[1] == "var":     
-            src = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
-            
-            if not src:
-                ErrorMessages.exit_code(54)         
-            if src.value == None:
-                ErrorMessages.exit_code(56)
-            
-            dest.change_value(src.value, src.type)
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "string":
+                ErrorMessages.exit_code(53)
+            string = var.value
         else:
-            dest.change_value(instruction.args[1], instruction.types[1])
+            if instruction.types[1] != "string":
+                ErrorMessages.exit_code(53)           
+            string = instruction.args[1]
+
+        if instruction.types[2] == "var":     
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            pos = var.value
+        else:
+            if instruction.types[2] != "int":
+                ErrorMessages.exit_code(53)           
+            pos = int(instruction.args[2])
+
+        try:
+            res = string[pos]
+        except:
+            ErrorMessages.exit_code(58)
+
+        dest.change_value(res, "string")
+
+
+    # TODO: otestovat
+    def SETCHAR(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        string, pos = "", -1
+
+        if instruction.types[1] == "var":     
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
+            if var.type != "int":
+                ErrorMessages.exit_code(53)
+            pos = var.value
+        else:
+            if instruction.types[1] != "int":
+                ErrorMessages.exit_code(53)           
+            pos = instruction.args[1]
+
+        if instruction.types[2] == "var":     
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
+            if var.type != "string":
+                ErrorMessages.exit_code(53)
+            string = var.value
+        else:
+            if instruction.types[2] != "string":
+                ErrorMessages.exit_code(53)           
+            string = int(instruction.args[2])
+
+        if string == "":
+            ErrorMessages.exit_code(58)
+            
+        try:
+            res = var.value[:pos] + string[0] + var.value[pos+1:]
+        except:
+            ErrorMessages.exit_code(58)
+
+        dest.change_value(res, "string")
 
     
+    # TODO: otestovat
+    def SETCHAR(self, instruction : Instruction):
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+
+
+    # TODO: otestovat
     def TYPE(self, instruction : Instruction):
         varType = ""
         if instruction.types[1] == "var":     
-            var = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
+            tmp = self.check_var(instruction.args[1][0], instruction.args[1][1])
             
-            if not var:
-                ErrorMessages.exit_code(54)         
-            if var.type:
-                varType = var.type
+            if tmp.type:
+                varType = var.tmp
         else:
             if instruction.types[1] != "nil":
                 varType = instruction.types[1]
 
-        var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-        if not var:
-            ErrorMessages.exit_code(54)         
-            
+        var = self.check_var(instruction.args[0][0], instruction.args[0][1])           
         var.change_value(varType, "string")
 
     
-    
+    # TODO: otestovat
     def JUMP(self, label):
 
         if label not in self.labels:
@@ -308,13 +595,12 @@ class Interpret:
         self.instructionCounter = self.labels[label] - 1
 
     
+    # TODO: otestovat
+    # TODO: co ten nil, ako to chapat
     def JUMPIF(self, instruction : Instruction, equal):
         type1, type2, value1, value2 = None, None, None, None
         if instruction.types[1] == "var":
-            var = self.frames.find_var(instruction.args[1][0], instruction.args[1][1])
-            
-            if not var:
-                ErrorMessages.exit_code(54)
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1])
 
             if var.type == "nil":
                 self.JUMP(instruction.args[0])
@@ -327,10 +613,7 @@ class Interpret:
             type1, value1 = instruction.types[1], instruction.args[1]
 
         if instruction.types[2] == "var":
-            var = self.frames.find_var(instruction.args[2][0], instruction.args[2][1])
-            
-            if not var:
-                ErrorMessages.exit_code(54)
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1])
 
             if var.type == "nil":
                 self.JUMP(instruction.args[0])
@@ -345,14 +628,13 @@ class Interpret:
         if type1 == type2:
             if (equal and value1 == value2) or (not equal and value1 != value2):
                 self.JUMP(instruction.args[0])
+        else:
+            ErrorMessages.exit_code(53)
 
 
     def EXIT_PRG(self, instruction : Instruction):
         if instruction.types[0] == "var":     
-            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-            
-            if not var:
-                ErrorMessages.exit_code(54)         
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1])    
             
             if var.type == "int" and var.value >= 0 and var.value <= 49:
                 exit(var.value)
@@ -363,16 +645,12 @@ class Interpret:
         ErrorMessages.exit_code(57)
 
 
+    # TODO: to ako write, len na stderr, spojit do jednej funkcie
+    # TODO: otestovat
     def DPRINT(self, instruction):
         string = ""
         if instruction.types[0] == "var":     
-            var = self.frames.find_var(instruction.args[0][0], instruction.args[0][1])
-            
-            if not var:
-                ErrorMessages.exit_code(54)         
-            if var.value == None:
-                ErrorMessages.exit_code(56)
-            
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
             string = var.value
         else:
             if instruction.types[0] != "nil":
@@ -435,51 +713,51 @@ class Interpret:
             
             # ADD
             elif opcode == "ADD":
-                pass
-            
+                self.MATH_OPERATIONS(instruction, "+")
+
             # SUB
             elif opcode == "SUB":
-                pass
+                self.MATH_OPERATIONS(instruction, "-")
             
             # MUL
             elif opcode == "MUL":
-                pass
+                self.MATH_OPERATIONS(instruction, "*")
             
             # IDIV
             elif opcode == "IDIV":
-                pass
+                self.MATH_OPERATIONS(instruction, "/")
             
             # LT
             elif opcode == "LT":
-                pass
+                self.COMPARE(instruction, "<")
             
             # GT
             elif opcode == "GT":
-                pass
+                self.COMPARE(instruction, ">")
             
             # EQ
             elif opcode == "EQ":
-                pass
+                self.COMPARE(instruction, "=")
             
             # AND
             elif opcode == "AND":
-                pass
+                self.LOGICAL_OP(instruction, "and")
             
             # OR
             elif opcode == "OR":
-                pass
+                self.LOGICAL_OP(instruction, "or")
             
             # NOT
             elif opcode == "NOT":
-                pass
+                self.LOGICAL_OP(instruction, "not")
             
             # INT2CHAR
             elif opcode == "INT2CHAR":
-                pass
+                self.INT2CHAR(instruction)
             
             # STR2INT
-            elif opcode == "STR2INT":
-                pass
+            elif opcode == "STRI2INT":
+                self.STRI2CHAR(instruction)
 
             # READ
             elif opcode == "READ":
@@ -491,19 +769,19 @@ class Interpret:
 
             # CONCAT
             elif opcode == "CONCAT":
-                pass
+                self.CONCAT(instruction)
 
             # STRLEN
             elif opcode == "STRLEN":
-                pass
+                self.STRLEN(instruction)
 
             # GETCHAR
             elif opcode == "GETCHAR":
-                pass
+                self.GETCHAR(instruction)
 
             # SETCHAR
             elif opcode == "SETCHAR":
-                pass
+                self.SETCHAR(instruction)
 
             # TYPE
             elif opcode == "TYPE":
@@ -525,15 +803,15 @@ class Interpret:
             elif opcode == "JUMPIFNEQ":
                 self.JUMPIF(instruction, False)
 
-            # JUMP
+            # EXIT
             elif opcode == "EXIT":
                 self.EXIT_PRG(instruction)
 
-            # JUMP
+            # DRPINT
             elif opcode == "DPRINT":
                 self.DPRINT(instruction)
 
-            # JUMP
+            # BREAK
             elif opcode == "BREAK":
                 self.BREAK_PRG()
 
