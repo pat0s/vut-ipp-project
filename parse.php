@@ -29,7 +29,7 @@ class InstructionParser
                 fprintf(STDERR, "ERROR: Missing header!");
                 exit(21);
             }
-            else if ((count($separatedItems) == 1) && ($separatedItems[0] == ".IPPcode22"))
+            else if ((count($separatedItems) == 1) && (strtoupper($separatedItems[0]) == ".IPPCODE22"))
             {
                 $this->firstLine = false;
                 return;
@@ -192,7 +192,7 @@ class InstructionParser
             {
                 if ($arg == "label")
                 {
-                    if (!preg_match("/^[a-zA-Z\_\-$&%\*\!\?](\S+)$/", $separatedItems[$pos]))
+                    if (!preg_match("/^[a-zA-Z\_\-$&%\*\!\?][0-9a-zA-Z\_\-$&%\*\!\?]*$/", $separatedItems[$pos]))
                         return false;
                     
                     XMLFileWriter::addArg($pos, $arg, $separatedItems[$pos]);
