@@ -2,6 +2,7 @@
 
 include "src/xmlProcessing.php";
 
+ini_set('display_errors', 'stderr');
 
 /**
  * Class for parsing IPPcode22 source code
@@ -117,6 +118,7 @@ class InstructionParser
 			case "TYPE":
             case "STRLEN":
             case "INT2CHAR":
+            case "NOT":
                 if (count($separatedItems) !== 3)
                 {
                     return false;
@@ -143,7 +145,6 @@ class InstructionParser
             // <var> <symb> <symb>
             case "AND":
             case "OR":
-            case "NOT":
             case "LT":
             case "GT":
             case "EQ":
