@@ -1,4 +1,3 @@
-from msilib.schema import Error
 import xml.etree.ElementTree as ET
 import sys, re
 
@@ -8,7 +7,7 @@ from src_interpret.components import *
 class Interpret:
     INSTRUCTIONS = {"MOVE" : 2,
                     "CREATEFRAME" : 0, 
-                    "PUSHSFRAME" : 0,
+                    "PUSHFRAME" : 0,
                     "POPFRAME" : 0,
                     "RETURN" : 0,
                     "BREAK" : 0,
@@ -595,9 +594,9 @@ class Interpret:
         self.instructionCounter = self.labels[label] - 1
 
     
-    # TODO: otestovat
+    # TODO: otestovat chybove stavy
     # TODO: co ten nil, ako to chapat
-    def JUMPIF(self, instruction : Instruction, equal):
+    def JUMPIF(self, instruction : Instruction, equal):       
         type1, type2, value1, value2 = None, None, None, None
         if instruction.types[1] == "var":
             var = self.check_var(instruction.args[1][0], instruction.args[1][1])
@@ -610,7 +609,7 @@ class Interpret:
             if instruction.types[1] == "nil":
                 self.JUMP(instruction.args[0])
                 return
-            type1, value1 = instruction.types[1], instruction.args[1]
+            type1, value1 = instruction.types[1], int(instruction.args[1])
 
         if instruction.types[2] == "var":
             var = self.check_var(instruction.args[2][0], instruction.args[2][1])
@@ -623,7 +622,7 @@ class Interpret:
             if instruction.types[2] == "nil":
                 self.JUMP(instruction.args[0])
                 return
-            type1, value1 = instruction.types[2], instruction.args[2]
+            type2, value2 = instruction.types[2], int(instruction.args[2])
 
         if type1 == type2:
             if (equal and value1 == value2) or (not equal and value1 != value2):
