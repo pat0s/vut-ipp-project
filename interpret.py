@@ -133,7 +133,7 @@ class Interpret:
 
         self.code = tree.getroot()
         
-        print("[+] Parsing OK")
+        #print("[+] Parsing OK")
         self.check_XML_root()
         self.sort_instructions_by_order()
         self.check_code()
@@ -144,10 +144,10 @@ class Interpret:
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
             ErrorMessages.exit_code(32)
     
-        print("[+] Root tag OK")
+        # print("[+] Root tag OK")
 
         # TODO: name a description v root elemente 
-        print("[+] Root attrib ok")
+        # print("[+] Root attrib ok")
 
 
     def sort_instructions_by_order(self):
@@ -157,11 +157,25 @@ class Interpret:
         except:
             ErrorMessages.exit_code(32)
 
-        print("[+] Sorting ...")
+        # print("[+] Sorting ...")
 
     
     def escape_seq_to_string(self, escape_seq):
-        pass
+
+        re.sub("&gt;", ">", escape_seq)
+        re.sub("&lt;", "<", escape_seq)
+        re.sub("&amp;", "&", escape_seq)
+
+        res = ""
+        i = 0
+        while i < len(escape_seq):
+            if escape_seq[i] == '\\':
+                res += chr(int(escape_seq[i+1:i+4]))
+                i += 3
+            else:
+                res += escape_seq[i]
+            i += 1
+        return res 
 
 
     def parse_instruction(self, tag, position):    
@@ -174,20 +188,27 @@ class Interpret:
         except:
             ErrorMessages.exit_code(32)
 
-        no_args = self.INSTRUCTIONS[instruction.opcode]
+        if instruction.opcode in self.INSTRUCTIONS:
+            no_args = self.INSTRUCTIONS[instruction.opcode]
+        else:
+            ErrorMessages.exit_code(32)
 
         for i in range(no_args):
-            arg = tag.find(f"arg{i+1}")
-            type = arg.attrib.get("type")
+            try:
+                arg = tag.find(f"arg{i+1}")
+                type = arg.attrib.get("type")
+            except:
+                ErrorMessages.exit_code(32)
+            
             if type == "var":
                 frame, name = arg.text.split('@')
                 instruction.args.append([name, frame])
             else:
                 text = arg.text
                 
-                # TODO
-                #if type == "string":
-                #    text = self.escape_seq_to_string(text)
+                # TODO:
+                if type == "string":
+                    text = self.escape_seq_to_string(text)
                 instruction.args.append(text)
             
             instruction.types.append(type)
@@ -219,7 +240,7 @@ class Interpret:
             self.parse_instruction(child, position)
             position += 1
         
-        print("[+] Save labels, check opcode sequence")
+        # print("[+] Save labels, check opcode sequence")
 
     
     ########################################
@@ -271,7 +292,6 @@ class Interpret:
         var.change_value(value, type)
 
 
-    # TODO: skontrolovat
     def MATH_OPERATIONS(self, instruction : Instruction, operator):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         res, op2 = 0, 0
@@ -311,7 +331,6 @@ class Interpret:
         dest.change_value(res, "int")
 
 
-    # TODO: otestovat
     def COMPARE(self, instruction : Instruction, operator):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         val1, type1, val2, type2 = "", "", "", ""
@@ -349,7 +368,6 @@ class Interpret:
         dest.change_value(str(res).lower(), "bool")
 
 
-    # TODO: otestovat
     def LOGICAL_OP(self, instruction : Instruction, operator):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         op1, op2 = "", ""
@@ -388,7 +406,6 @@ class Interpret:
         dest.change_value(res, "bool")
 
 
-    # TODO: otestovat
     def INT2CHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         char = ""
@@ -411,7 +428,6 @@ class Interpret:
         dest.change_value(char, "string")
 
     
-    # TODO: otestovat
     def STRI2CHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         string, pos = "", -1
@@ -456,7 +472,6 @@ class Interpret:
         print(string, end="")
 
     
-    # TODO: otestovat chybove stavy
     def CONCAT(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1]) 
 
@@ -476,7 +491,6 @@ class Interpret:
         dest.change_value(res, "string") 
 
 
-    # TODO: otestovat chybove stavy
     def STRLEN(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
 
@@ -495,7 +509,6 @@ class Interpret:
         dest.change_value(res, "int")
 
 
-    # TODO: otestovat
     def GETCHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         string, pos = "", -1
@@ -528,7 +541,6 @@ class Interpret:
         dest.change_value(res, "string")
 
 
-    # TODO: otestovat
     def SETCHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         string, pos = "", -1
@@ -564,12 +576,10 @@ class Interpret:
         dest.change_value(res, "string")
 
     
-    # TODO: otestovat
     def SETCHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
 
 
-    # TODO: otestovat
     def TYPE(self, instruction : Instruction):
         varType = ""
         if instruction.types[1] == "var":     
@@ -585,7 +595,6 @@ class Interpret:
         var.change_value(varType, "string")
 
     
-    # TODO: otestovat
     def JUMP(self, label):
 
         if label not in self.labels:
@@ -594,7 +603,6 @@ class Interpret:
         self.instructionCounter = self.labels[label] - 1
 
     
-    # TODO: otestovat chybove stavy
     # TODO: co ten nil, ako to chapat
     def JUMPIF(self, instruction : Instruction, equal):       
         type1, type2, value1, value2 = None, None, None, None
@@ -645,7 +653,6 @@ class Interpret:
 
 
     # TODO: to ako write, len na stderr, spojit do jednej funkcie
-    # TODO: otestovat
     def DPRINT(self, instruction):
         string = ""
         if instruction.types[0] == "var":     
