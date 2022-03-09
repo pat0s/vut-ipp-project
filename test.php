@@ -1,8 +1,10 @@
 <?php
 
-$path = '.';
+include "src_test/html_generator.php";
+
+$path = './';
 $recursive = false;
-$parser = './parser.php';
+$parser = './parse.php';
 $interpret = './interpret.py';
 $parserOnly = false;
 $interpretOnly = false;
@@ -116,8 +118,8 @@ foreach($regexIter as $file)
 {
     // ^(\..*\\\\)(.+)(?=\.)\.src$, ^(\..*\\\\)(.+)\.src$ - Windows
     // ^(\..*\/)(.+)(?=\.)\.src$, ^(\..*\/)(.+)\.src$ - Linux
-    $testName = preg_replace("/^(\..*\\\\)(.+)\.src$/", "\\2", $file);
-    $testDir = preg_replace("/^(\..*\\\\)(.+)\.src$/", "\\1", $file);
+    $testName = preg_replace("/^(\..*\/)(.+)\.src$/", "\\2", $file);
+    $testDir = preg_replace("/^(\..*\/)(.+)\.src$/", "\\1", $file);
 
     if (!array_key_exists($testDir, $tests))
     {
@@ -128,27 +130,68 @@ foreach($regexIter as $file)
 }
 array_multisort($tests);
 
+$allCount = 0;
+$successful = 0;
+
+HTMLgenerator::generateHeader();
+HTMLgenerator::generateStartBody();
+
 // Execute tests
 foreach($tests as $dirName => $dir)
 {
-    foreach($dir as $file)
+    HTMLgenerator::addFolder($dirName);
+
+    foreach($dir as $fileName)
     {
-        $srcFile = $dirName.$file.'.src';
-        $rcFile = $dirName.$file.'.rc';
-        $inFile = $dirName.$file.'.in';
-        $outFile = $dirName.$file.'.out';
-        $myOutFile = $dirName.$file.'.my_out';
-        
+		$allCount++;
+        $oldSuccessful = $successful;
+		
+		$srcFile = $dirName.$fileName.'.src';
+        $rcFile = $dirName.$fileName.'.rc';
+        $inFile = $dirName.$fileName.'.in';
+        $outFile = $dirName.$fileName.'.out';
+        $myOutFile = $dirName.$fileName.'.my_out';
+		$diffFile = './diffs.xml';
+
+        // Missing files
+        if (!file_exists($inFile))
+        {
+            create_file($inFile, "");
+        }
+        if (!file_exists($outFile))
+        {
+            create_file($outFile, "");
+        }
+        if (!file_exists($rcFile))
+        {
+            create_file($rcFile, "0");
+        }
+
         // Parser only
         if ($parserOnly)
         {
+            unset($output);
             unset($exitCode);
-            //exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile, '', $exitCode);
-            if ($exitCode == 0)
+            exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile. ' 2> /dev/null', $output, $exitCode);
+
+			$file = fopen($rcFile, 'r');
+			$rc = fgets($file);
+			fclose($file);
+
+			if ($exitCode == intval( $rc ))
             {
-                unset($output);
-                unset($exitCode);
-                //exec('java -jar'.$jexamexe.' '.$outFile.' '.$myOutFile, $output, $exitCode);
+                if ($exitCode == 0)
+                {
+                    unset($output);
+                    unset($exitCode);
+                    exec('java -jar '.$jexamexe.' '.$outFile.' '.$myOutFile.' '.$diffFile.' '.' /D '.$jexamdir.'options', $output, $exitCode);
+                    
+                    if ($exitCode == 0) $successful++;
+                }
+                else
+                {
+                    $successful++;
+                }
             }
         }
         // Interpret only
@@ -156,7 +199,7 @@ foreach($tests as $dirName => $dir)
         {
             unset($output);
             unset($exitCode);
-            //exec('python3.8 '.$interpret.' --source='.$srcFile.' < '.$inFile.' > '.$myOutFile, '', $exitCode);
+            exec('python3.8 '.$interpret.' --source='.$srcFile.' < '.$inFile.' > '.$myOutFile, $output, $exitCode);
             if ($output == 0)
             {
                 unset($output);
@@ -168,8 +211,23 @@ foreach($tests as $dirName => $dir)
         else{
 
         }
+
+        HTMLgenerator::addTest($fileName, boolval($successful-$oldSuccessful));
     }
+
+    HTMLgenerator::generateFolder();
  
+}
+
+HTMLgenerator::generateEndBody($successful, $allCount);
+HTMLgenerator::generateWebpage();
+
+// Create files with content
+function create_file($fileName, $content)
+{
+    $file = fopen($fileName, 'w');
+    fwrite($file, $content);
+    fclose($file);
 }
 
 ?>
