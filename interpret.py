@@ -278,7 +278,7 @@ class Interpret:
 
     def PUSHS(self, instruction):
         if instruction.types[0] == "var":
-            var = self.check_var(instruction.args[0][0], instruction.args[0][1])
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
                 
             self.callStack.append(var.value)
         else:
@@ -341,13 +341,13 @@ class Interpret:
             var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
             val1, type1 = var.value, var.type
         else:  
-            val1, type1 = instruction.args[1], instruction.type[1]
+            val1, type1 = instruction.args[1], instruction.types[1]
 
         if instruction.types[2] == "var":     
             var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
             val2, type2 = var.value, var.type
         else:  
-            val2, type2 = instruction.args[2], instruction.type[2]
+            val2, type2 = instruction.args[2], instruction.types[2]
 
         res = ""
         if type1 == type2:
@@ -387,11 +387,11 @@ class Interpret:
         if operator != "not":
             if instruction.types[2] == "var":     
                 var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
-                if var.type != "int":
+                if var.type != "bool":
                     ErrorMessages.exit_code(53)
                 op2 = var.value
             else:
-                if instruction.types[2] != "int":
+                if instruction.types[2] != "bool":
                     ErrorMessages.exit_code(53)           
                 op2 = instruction.args[2]
 
@@ -454,11 +454,10 @@ class Interpret:
                 ErrorMessages.exit_code(53)           
             pos = int(instruction.args[2])
 
-        try:
-            res = ord(string[pos])
-        except:
+        if pos < 0 or pos >= len(string):
             ErrorMessages.exit_code(58)
 
+        res = ord(string[pos])
         dest.change_value(res, "int")
 
     
@@ -493,12 +492,12 @@ class Interpret:
         uInput.rstrip("\n")
         
         # assign value according to given type
-        if instruction.types[1] == "int":
+        if instruction.args[1] == "int":
             try:
                 dest.change_value(int(uInput) ,"int")
             except:
                 dest.change_value("nil", "nil")
-        elif instruction.types[1] == "bool":
+        elif instruction.args[1] == "bool":
             if uInput.lower() == "true":
                 dest.change_value("true", "bool")
             else:
@@ -511,7 +510,8 @@ class Interpret:
         string = ""
         if instruction.types[0] == "var":     
             var = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
-            string = var.value
+            if var.type != "nil":
+                string = var.value
         else:
             if instruction.types[0] != "nil":
                 string = instruction.args[0]
@@ -580,16 +580,15 @@ class Interpret:
                 ErrorMessages.exit_code(53)           
             pos = int(instruction.args[2])
 
-        try:
-            res = string[pos]
-        except:
+        if pos < 0 or pos >= len(string):
             ErrorMessages.exit_code(58)
 
+        res = string[pos]
         dest.change_value(res, "string")
 
 
     def SETCHAR(self, instruction : Instruction):
-        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
         string, pos = "", -1
 
         if instruction.types[1] == "var":     
@@ -600,7 +599,7 @@ class Interpret:
         else:
             if instruction.types[1] != "int":
                 ErrorMessages.exit_code(53)           
-            pos = instruction.args[1]
+            pos = int(instruction.args[1])
 
         if instruction.types[2] == "var":     
             var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
@@ -610,21 +609,16 @@ class Interpret:
         else:
             if instruction.types[2] != "string":
                 ErrorMessages.exit_code(53)           
-            string = int(instruction.args[2])
+            string = instruction.args[2]
 
         if string == "":
             ErrorMessages.exit_code(58)
             
-        try:
-            res = var.value[:pos] + string[0] + var.value[pos+1:]
-        except:
+        if pos < 0 or pos >= len(string):
             ErrorMessages.exit_code(58)
 
+        res = var.value[:pos] + string[0] + var.value[pos+1:]
         dest.change_value(res, "string")
-
-    
-    def SETCHAR(self, instruction : Instruction):
-        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
 
 
     def TYPE(self, instruction : Instruction):
@@ -633,10 +627,9 @@ class Interpret:
             tmp = self.check_var(instruction.args[1][0], instruction.args[1][1])
             
             if tmp.type:
-                varType = var.tmp
+                varType = tmp.type
         else:
-            if instruction.types[1] != "nil":
-                varType = instruction.types[1]
+            varType = instruction.types[1]
 
         var = self.check_var(instruction.args[0][0], instruction.args[0][1])           
         var.change_value(varType, "string")
