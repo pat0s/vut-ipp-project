@@ -1,4 +1,11 @@
 <?php
+/**
+ * Project: IPP project, part 1
+ * @file xml_processing.php
+ * 
+ * @brief XML file creator
+ * @author Patrik Sehnoutek, xsehno01
+ */
 
 declare(strict_types=1);
 

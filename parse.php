@@ -1,6 +1,13 @@
 <?php
+/**
+ * Project: IPP project, part 1
+ * @file parse.php
+ * 
+ * @brief Parser for source code IPPcode22
+ * @author Patrik Sehnoutek, xsehno01
+ */
 
-include "src/xmlProcessing.php";
+include "src_parse/xml_processing.php";
 
 ini_set('display_errors', 'stderr');
 
