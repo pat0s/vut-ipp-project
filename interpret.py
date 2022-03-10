@@ -589,8 +589,10 @@ class Interpret:
 
     def SETCHAR(self, instruction : Instruction):
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1], True)
-        string, pos = "", -1
+        if dest.type != "string":
+            ErrorMessages.exit_code(53)
 
+        string, pos = "", -1
         if instruction.types[1] == "var":     
             var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
             if var.type != "int":
@@ -611,13 +613,13 @@ class Interpret:
                 ErrorMessages.exit_code(53)           
             string = instruction.args[2]
 
-        if string == "":
-            ErrorMessages.exit_code(58)
-            
-        if pos < 0 or pos >= len(string):
+        if string == "" or pos < 0 or pos >= len(dest.value):
             ErrorMessages.exit_code(58)
 
-        res = var.value[:pos] + string[0] + var.value[pos+1:]
+        if pos == len(dest.value) - 1:
+            res = dest.value[:pos] + string[0]
+        else:
+            res = dest.value[:pos] + string[0] + dest.value[pos+1:]
         dest.change_value(res, "string")
 
 
@@ -681,13 +683,19 @@ class Interpret:
 
     def EXIT_PRG(self, instruction : Instruction):
         if instruction.types[0] == "var":     
-            var = self.check_var(instruction.args[0][0], instruction.args[0][1])    
+            var = self.check_var(instruction.args[0][0], instruction.args[0][1], True)    
             
-            if var.type == "int" and var.value >= 0 and var.value <= 49:
-                exit(var.value)
+            if var.type == "int":
+                if var.value >= 0 and var.value <= 49:
+                    sys.exit(var.value)
+            else:
+                ErrorMessages.exit_code(53)
         else:
-            if instruction.types[0] == "int" and int(instruction.args[0]) >= 0 and int(instruction.args[0]) <= 49:
-                exit(int(instruction.args[0]))
+            if instruction.types[0] == "int":
+                if int(instruction.args[0]) >= 0 and int(instruction.args[0]) <= 49:
+                    sys.exit(int(instruction.args[0]))
+            else:
+                ErrorMessages.exit_code(53)
 
         ErrorMessages.exit_code(57)
 
