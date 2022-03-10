@@ -6,6 +6,8 @@ class ErrorMessages:
     def exit_code(err_code):
         
         ERRORS = {
+        10 : "ERROR: Wrong program argument or unknown combination of arguments!",
+        11 : "ERROR: Cannot open file for reading!",
         31 : "ERORR: Invalid XML format of input file",
         32 : "ERROR: Unexpected XML structure",
         52 : "SEMATIC ERROR: ...",

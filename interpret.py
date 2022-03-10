@@ -59,11 +59,8 @@ class Interpret:
         self.instructionCounter = 0
         # frames class
         self.frames = Frames()
-
-
-    def print_error(self, err_msg, err_code):
-        print(err_msg, file=sys.stderr)
-        exit(err_code)
+        # read usage
+        self.readUsage = 0
 
 
     def load_args(self):
@@ -71,7 +68,7 @@ class Interpret:
         argc = len(argv)
 
         if argc == 1:
-            self.print_error("ERROR: At least one of source or input file has to be specified!", 10)
+            ErrorMessages.exit_code(10)
         
         elif argc == 2:
             if argv[1] == "--help":
@@ -91,7 +88,8 @@ class Interpret:
             elif re.search(r"^--input=.+$", argv[1]):
                 self.input = re.findall(r"(?<=\=).*", argv[1])[0]
             else:
-                self.print_error("ERROR: Unknown combination of arguments!", 10)
+                ErrorMessages.exit_code(10)
+
         
         elif argc == 3:
             r = re.compile(r"^(--source=|--input=).+$")
@@ -99,22 +97,21 @@ class Interpret:
             
             # too many arguments
             if len(files) != 2:
-                self.print_error("ERROR: Unknown combination of arguments!", 10)
+                ErrorMessages.exit_code(10)
             
             for item in files:
                 item = re.split(r"=", item)
-                print(item)
                 if len(item) != 2:
-                    self.print_error()
+                    ErrorMessages.exit_code(10)
                 
                 if item[0] == "--source" and self.source == "STDIN":
                     self.source = item[1]
                 elif item[0] == "--input" and self.input == "STDIN":
                     self.input = item[1]
                 else:
-                    self.print_error("ERROR: Multiple same arguments", 10)
+                    ErrorMessages.exit_code(10)
         else:
-            self.print_error("ERROR: Unknown combination of arguments!", 10)
+            ErrorMessages.exit_code(10)
         
         # TODO: input and source file cannot be the same
 
@@ -129,7 +126,7 @@ class Interpret:
             else:
                 tree = ET.parse(self.source)
         except:
-            self.print_error("ERROR: Cannot parse XML source code!", 31)
+            ErrorMessages.exit_code(31)
 
         self.code = tree.getroot()
         
@@ -193,6 +190,9 @@ class Interpret:
         else:
             ErrorMessages.exit_code(32)
 
+        if len([child for child in tag.iter()]) -1 > no_args:
+            ErrorMessages.exit_code(32)
+
         for i in range(no_args):
             try:
                 arg = tag.find(f"arg{i+1}")
@@ -204,11 +204,10 @@ class Interpret:
                 frame, name = arg.text.split('@')
                 instruction.args.append([name, frame])
             else:
-                text = arg.text
-                
-                # TODO:
+                text = arg.text              
                 if type == "string":
                     text = self.escape_seq_to_string(text)
+                
                 instruction.args.append(text)
             
             instruction.types.append(type)
@@ -232,6 +231,9 @@ class Interpret:
         # check order and save labels
         previous_order = -1  
         for child in self.code:
+            if child.tag != "instruction":
+                ErrorMessages.exit_code(32)
+
             order = int(child.attrib.get("order"))
             if order <= 0 or order == previous_order:
                ErrorMessages.exit_code(32)
@@ -458,7 +460,52 @@ class Interpret:
             ErrorMessages.exit_code(58)
 
         dest.change_value(res, "int")
+
+    
+    # TODO: otestovat
+    def READ(self, instruction : Instruction):
+        # check the existence of variable
+        dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
         
+        # stdin
+        if self.input == "STDIN":
+            try:
+                uInput = input()
+            except:
+                ErrorMessages.exit_code(11)
+        # from file
+        else:
+            try:
+                with open(self.input) as f:
+                    fileContent = f.read().splitlines()
+            except:
+                ErrorMessages.exit_code(11)
+
+            if len(fileContent) < self.readUsage + 1:
+                dest.change_value("nil", "nil")
+                self.readUsage += 1
+                return
+
+            uInput = fileContent[self.readUsage]
+            self.readUsage += 1
+
+        # remove a trailing newline
+        uInput.rstrip("\n")
+        
+        # assign value according to given type
+        if instruction.types[1] == "int":
+            try:
+                dest.change_value(int(uInput) ,"int")
+            except:
+                dest.change_value("nil", "nil")
+        elif instruction.types[1] == "bool":
+            if uInput.lower() == "true":
+                dest.change_value("true", "bool")
+            else:
+                dest.change_value("false", "bool")
+        else:
+            dest.change_value(uInput, "string")
+
   
     def WRITE(self, instruction : Instruction):
         string = ""
@@ -767,7 +814,7 @@ class Interpret:
 
             # READ
             elif opcode == "READ":
-                pass
+                self.READ(instruction)
 
             # WRITE
             elif opcode == "WRITE":

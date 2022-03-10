@@ -57,7 +57,7 @@ class HTMLgenerator
             }
 
             #numberOfCorrect meter{
-                width: 10%;
+                width: 15%;
             }
 
             .testFile{
