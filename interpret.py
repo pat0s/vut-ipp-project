@@ -130,7 +130,6 @@ class Interpret:
 
         self.code = tree.getroot()
         
-        #print("[+] Parsing OK")
         self.check_XML_root()
         self.sort_instructions_by_order()
         self.check_code()
@@ -141,8 +140,6 @@ class Interpret:
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
             ErrorMessages.exit_code(32)
     
-        # print("[+] Root tag OK")
-
         # TODO: name a description v root elemente 
         # print("[+] Root attrib ok")
 
@@ -154,10 +151,11 @@ class Interpret:
         except:
             ErrorMessages.exit_code(32)
 
-        # print("[+] Sorting ...")
-
     
     def escape_seq_to_string(self, escape_seq):
+
+        if escape_seq == "":
+            return ""
 
         re.sub("&gt;", ">", escape_seq)
         re.sub("&lt;", "<", escape_seq)
@@ -206,6 +204,8 @@ class Interpret:
             else:
                 text = arg.text              
                 if type == "string":
+                    if text == None:
+                        text = ""
                     text = self.escape_seq_to_string(text)
                 
                 instruction.args.append(text)
@@ -242,8 +242,6 @@ class Interpret:
             self.parse_instruction(child, position)
             position += 1
         
-        # print("[+] Save labels, check opcode sequence")
-
     
     ########################################
     ######## FUNCTIONS for OPCODES #########
@@ -342,28 +340,29 @@ class Interpret:
             val1, type1 = var.value, var.type
         else:  
             val1, type1 = instruction.args[1], instruction.types[1]
+            if type1 == "int":
+                val1 = int(val1)
 
         if instruction.types[2] == "var":     
             var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
             val2, type2 = var.value, var.type
         else:  
             val2, type2 = instruction.args[2], instruction.types[2]
+            if type2 == "int":
+                val2 = int(val2)
 
         res = ""
         if type1 == type2:
             if type1 == "nil" and operator != "=":
                 ErrorMessages.exit_code(53)
-            if type1 == "int":
-                val1, val2 = int(val1), int(val2)
-
-            # Choose operation
             if operator == "<":
                 res = val1 < val2
             elif operator == ">":
                 res = val1 > val2
             else:
                 res = val1 == val2
-
+        elif (type1 == "nil" or type2 == "nil") and operator == "=":
+            res = False
         else:
             ErrorMessages.exit_code(53)
 
@@ -461,7 +460,7 @@ class Interpret:
         dest.change_value(res, "int")
 
     
-    # TODO: otestovat
+    # TODO: EOF
     def READ(self, instruction : Instruction):
         # check the existence of variable
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
@@ -636,45 +635,39 @@ class Interpret:
         var = self.check_var(instruction.args[0][0], instruction.args[0][1])           
         var.change_value(varType, "string")
 
-    
-    def JUMP(self, label):
 
+    def check_label(self, label):
         if label not in self.labels:
             ErrorMessages.exit_code(52)
 
+    
+    def JUMP(self, label):
+        self.check_label(label)
         self.instructionCounter = self.labels[label] - 1
 
     
-    # TODO: co ten nil, ako to chapat
     def JUMPIF(self, instruction : Instruction, equal):       
         type1, type2, value1, value2 = None, None, None, None
-        if instruction.types[1] == "var":
-            var = self.check_var(instruction.args[1][0], instruction.args[1][1])
 
-            if var.type == "nil":
-                self.JUMP(instruction.args[0])
-                return
+        self.check_label(instruction.args[0])
+        
+        if instruction.types[1] == "var":
+            var = self.check_var(instruction.args[1][0], instruction.args[1][1], True)
             type1, value1 = var.type, var.value
         else:
-            if instruction.types[1] == "nil":
-                self.JUMP(instruction.args[0])
-                return
-            type1, value1 = instruction.types[1], int(instruction.args[1])
+            type1, value1 = instruction.types[1], instruction.args[1]
+            if type1 == "int":
+                value1 = int(value1)
 
         if instruction.types[2] == "var":
-            var = self.check_var(instruction.args[2][0], instruction.args[2][1])
-
-            if var.type == "nil":
-                self.JUMP(instruction.args[0])
-                return
+            var = self.check_var(instruction.args[2][0], instruction.args[2][1], True)
             type2, value2 = var.type, var.value
         else:
-            if instruction.types[2] == "nil":
-                self.JUMP(instruction.args[0])
-                return
-            type2, value2 = instruction.types[2], int(instruction.args[2])
+            type2, value2 = instruction.types[2], instruction.args[2]
+            if type2 == "int":
+                value2 = int(value2)
 
-        if type1 == type2:
+        if type1 == type2 or type1 == "nil" or type2 == "nil":
             if (equal and value1 == value2) or (not equal and value1 != value2):
                 self.JUMP(instruction.args[0])
         else:
@@ -687,20 +680,19 @@ class Interpret:
             
             if var.type == "int":
                 if var.value >= 0 and var.value <= 49:
-                    sys.exit(var.value)
+                    exit(var.value)
             else:
                 ErrorMessages.exit_code(53)
         else:
             if instruction.types[0] == "int":
                 if int(instruction.args[0]) >= 0 and int(instruction.args[0]) <= 49:
-                    sys.exit(int(instruction.args[0]))
+                    exit(int(instruction.args[0]))
             else:
                 ErrorMessages.exit_code(53)
 
         ErrorMessages.exit_code(57)
 
 
-    # TODO: to ako write, len na stderr, spojit do jednej funkcie
     def DPRINT(self, instruction):
         string = ""
         if instruction.types[0] == "var":     
