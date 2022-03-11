@@ -1,7 +1,15 @@
+##
+#   @file components.py
+#
+#   @brief Contains classes for interpret.py
+#   @author Patrik Sehnoutek, xsehno01
+#
+
 from .error import ErrorMessages
 
 
 class Variable:
+    """Class for variable."""
     def __init__(self, name, frame):
         self.name = name
         self.value = None
@@ -9,6 +17,7 @@ class Variable:
         self.frame = frame
 
     def change_value(self, value, type):
+        """Updates value and type of variable."""
         if type == "int":
             value = int(value)        
         
@@ -17,6 +26,7 @@ class Variable:
 
 
 class Instruction:
+    """Class for parsed instruction with arguments."""
     def __init__(self):
         self.opcode = ""
         self.order = -1
@@ -26,15 +36,24 @@ class Instruction:
 
 
 class Frames:
+    """Symtable for variables.
+    
+    Symtable contains Temporary Frame (TF), Local Frame (LF),
+    and Global Frame (GF). TF is created using opcode CREATEFRAME.
+    TF become LF after using opcode PUSHSFRAME. GF is available
+    during whole execution.
+    """
     def __init__(self):
         self.framesStack = []
         self.globalFrame = {}
         self.tmpFrame = None
 
     def create_frame(self):
+        """Creates new TF."""
         self.tmpFrame = {}
 
     def push_frame(self):
+        """Saves TF to frame stack."""
         if self.tmpFrame is None:
             ErrorMessages.exit_code(55)
         
@@ -42,12 +61,18 @@ class Frames:
         self.tmpFrame = None
 
     def pop_frame(self):
+        """Removes frame from frame stack and saves it as TF."""
         if not self.framesStack:
             ErrorMessages.exit_code(55)
 
         self.tmpFrame = self.framesStack.pop()
 
     def find_var(self, varName, frame) -> Variable:
+        """Finds variable by its name in the given frame.
+        
+            :return: found variable | None
+            :rtype: instance of class Variable | None
+        """
         if frame == "GF":
             if varName in self.globalFrame:
                 return self.globalFrame[varName]
@@ -65,6 +90,7 @@ class Frames:
         return None
 
     def add_var(self, varName, frame):
+        """Saves variable to the given frame."""
         if self.find_var(varName, frame):
             ErrorMessages.exit_code(52)
 
