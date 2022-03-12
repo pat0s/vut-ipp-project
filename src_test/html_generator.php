@@ -1,5 +1,16 @@
 <?php
+/**
+ * Project: IPP project, part 2
+ * @file html_generator.php
+ * 
+ * @brief HTML generator for website with test results
+ * @author Patrik Sehnoutek, xsehno01
+ */
 
+
+ /**
+ * Class for generating website source code
+ */
 class HTMLgenerator
 {
     private static $pageCode = "";
@@ -121,26 +132,49 @@ class HTMLgenerator
     </body>
     </html>';
     
+    /**
+     * @brief Generates head tag and CSS
+     */
     public static function generateHeader()
     {
         self::$pageCode = self::$pageCode.self::$header;
     }
 
+    /**
+     * @brief Generates start of body tag
+     */
     public static function generateStartBody()
     {
         self::$pageCode = self::$pageCode.self::$bodyStart;
     }
 
+    /**
+     * @brief Generates test results
+     * 
+     * @param passed Number of passed tests
+     * @param all Number of all tests
+     */
     public static function generateEndBody($passed, $all)
     {
         self::$pageCode = self::$pageCode.'<div id="mainBody"><div id="numberOfCorrect"><h2>Correct: '.$passed.'/'.$all.'</h2><meter value="'.$passed.'" min="0" max="'.$all.'"></meter></div>'.self::$tests.self::$bodyEnd;
     }
 
+    /**
+     * @brief saves folder name to class attribute
+     * 
+     * @param folderName Name of a folder
+     */
     public static function addFolder($folderName)
     {
         self::$folderName = $folderName;
     }
 
+    /**
+     * @brief Adds a test to passed or failed tests in the folder
+     * 
+     * @param fileName Name of a file
+     * @param passed true/false
+     */
     public static function addTest($fileName, $passed)
     {
         if ($passed)
@@ -153,6 +187,9 @@ class HTMLgenerator
         }
     }
     
+    /**
+     * @brief Generates source code for one folder
+     */
     public static function generateFolder()
     {
         self::$tests = self::$tests.'<div class ="testFile"><h2>'.self::$folderName.'</h2><div class="correct">'.self::$passedTests.'</div>'.'<div class="incorrect">'.self::$failedTests.'</div></div>';
@@ -160,6 +197,9 @@ class HTMLgenerator
         self::$failedTests = "";
     }
 
+    /**
+     * @brief Prints website source code to stdin
+     */
     public static function generateWebpage()
     {
         echo self::$pageCode;

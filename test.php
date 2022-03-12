@@ -1,4 +1,12 @@
 <?php
+/**
+ * Project: IPP project, part 2
+ * @file test.php
+ * 
+ * @brief Tester for parser and interpret
+ * @author Patrik Sehnoutek, xsehno01
+ */
+
 
 include "src_test/html_generator.php";
 
@@ -23,7 +31,7 @@ if (count($args) != (count($argv) - 1) || count($args) > 7)
     exit(10);
 }
 
-// TODO: neviem, ci je potrebne osetrovat aj pocet argumentov pri tom, ked bude help
+// Print help message
 if (array_key_exists('help', $args) || array_key_exists('h', $args))
 {
     print("Script test.php description\n");
@@ -41,9 +49,11 @@ if (array_key_exists('help', $args) || array_key_exists('h', $args))
     exit(0);
 }
 
+// Check arguments
 if (array_key_exists('directory', $args) || array_key_exists('d', $args))
 {
     $path = isset($args['d']) ? $args['d'] : $args['directory'];
+    if ($path[-1] != '/') $path = $path.'/';
 }
 
 if (array_key_exists('recursive', $args) || array_key_exists('r', $args))
@@ -116,8 +126,6 @@ $regexIter = new RegexIterator($iterator, "/^.+\.src$/");
 $tests = [];
 foreach($regexIter as $file)
 {
-    // ^(\..*\\\\)(.+)(?=\.)\.src$, ^(\..*\\\\)(.+)\.src$ - Windows
-    // ^(\..*\/)(.+)(?=\.)\.src$, ^(\..*\/)(.+)\.src$ - Linux
     $testName = preg_replace("/^(\..*\/)(.+)\.src$/", "\\2", $file);
     $testDir = preg_replace("/^(\..*\/)(.+)\.src$/", "\\1", $file);
 
@@ -152,6 +160,7 @@ foreach($tests as $dirName => $dir)
         $outFile = $dirName.$fileName.'.out';
         $myOutFile = $dirName.$fileName.'.my_out';
 		$diffFile = './diffs.xml';
+		$myXMLFile = $dirName.$fileName.'.xml';
 
         // Missing files
         if (!file_exists($inFile))
@@ -172,7 +181,7 @@ foreach($tests as $dirName => $dir)
         {
             unset($output);
             unset($exitCode);
-            exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile. ' 2> /dev/null', $output, $exitCode);
+            exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile.' 2> /dev/null', $output, $exitCode);
 
 			$file = fopen($rcFile, 'r');
 			$rc = fgets($file);
@@ -199,17 +208,71 @@ foreach($tests as $dirName => $dir)
         {
             unset($output);
             unset($exitCode);
-            exec('python3.8 '.$interpret.' --source='.$srcFile.' < '.$inFile.' > '.$myOutFile, $output, $exitCode);
-            if ($output == 0)
+            exec('python3.8 '.$interpret.' --source='.$srcFile.' --input='.$inFile.' > '.$myOutFile.' 2> /dev/null', $output, $exitCode);
+            
+            $file = fopen($rcFile, 'r');
+			$rc = fgets($file);
+			fclose($file);
+
+			if ($exitCode == intval( $rc ))
             {
-                unset($output);
-                unset($exitCode);
-                //exec('diff '.$outFile.' '.$myOutFile, $output, $exitCode);   
+                if ($exitCode == 0)
+                {
+                    unset($output);
+                    unset($exitCode);
+                    exec('diff '.$outFile.' '.$myOutFile.' 2> /dev/null', $output, $exitCode);
+                    
+                    if ($exitCode == 0) $successful++;
+                }
+                else
+                {
+                    $successful++;
+                }
             }
+
         }
         // Both
         else{
+            unset($output);
+            unset($exitCode);
+            exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myXMLFile.' 2> /dev/null', $output, $exitCode);
 
+			$file = fopen($rcFile, 'r');
+			$rc = fgets($file);
+			fclose($file);
+
+            if ($exitCode == 0)
+            {
+                unset($output);
+                unset($exitCode);
+                exec('python3.8 '.$interpret.' --source='.$myXMLFile.' --input='.$inFile.' > '.$myOutFile.' 2> /dev/null', $output, $exitCode);
+                
+                if ($exitCode == intval( $rc ))
+                {
+                    if ($exitCode == 0)
+                    {
+                        unset($output);
+                        unset($exitCode);
+                        exec('diff '.$outFile.' '.$myOutFile.' 2> /dev/null', $output, $exitCode);
+                        
+                        if ($exitCode == 0) $successful++;
+                    }
+                    else
+                    {
+                        $successful++;
+                    }
+                }
+            }
+            else if ($exitCode == intval( $rc ))
+            {
+                $successful++;
+            }
+        }
+
+        // Remove tmp files
+        if ($cleanTmp)
+        {
+            exec('rm -f '.$diffFile.' '.$myOutFile.' '.$myXMLFile);
         }
 
         HTMLgenerator::addTest($fileName, boolval($successful-$oldSuccessful));
@@ -219,6 +282,7 @@ foreach($tests as $dirName => $dir)
  
 }
 
+// Close body tag and generate print website source code to stdin
 HTMLgenerator::generateEndBody($successful, $allCount);
 HTMLgenerator::generateWebpage();
 
