@@ -7,8 +7,8 @@
  * @author Patrik Sehnoutek, xsehno01
  */
 
-include "src_parse/xml_processing.php";
 
+include "src_parse/xml_processing.php";
 ini_set('display_errors', 'stderr');
 
 /**
@@ -244,6 +244,8 @@ class InstructionParser
 							preg_replace("/</", "&lt", $separated[1]);
 							preg_replace("/>/", "&gt", $separated[1]);
 							preg_replace("/&/", "&amp", $separated[1]);
+                            preg_replace("/\"/", "&quot", $separated[1]);
+                            preg_replace("/\'/", "&apos", $separated[1]);
 						}
                     }
                     else if ($separated[0] == 'int')

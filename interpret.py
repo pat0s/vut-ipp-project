@@ -160,6 +160,8 @@ class Interpret:
         re.sub("&gt;", ">", escape_seq)
         re.sub("&lt;", "<", escape_seq)
         re.sub("&amp;", "&", escape_seq)
+        re.sub("&quot;", "\"", escape_seq)
+        re.sub("&apos;", "\'", escape_seq)
 
         res = ""
         i = 0
