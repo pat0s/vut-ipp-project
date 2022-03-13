@@ -113,7 +113,9 @@ class Interpret:
         else:
             ErrorMessages.exit_code(10)
         
-        # TODO: input and source file cannot be the same
+        # input and source file cannot be the same
+        if self.input == self.source:
+            ErrorMessages.exit_code(10)
 
 
     def load_source_code(self):
@@ -140,8 +142,10 @@ class Interpret:
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
             ErrorMessages.exit_code(32)
     
-        # TODO: name a description v root elemente 
-        # print("[+] Root attrib ok")
+        # check program tags
+        for k, v in self.code.attrib.items():
+            if k not in ["language", "name", "description"]:
+                ErrorMessages.exit_code(32)
 
 
     def sort_instructions_by_order(self):
@@ -318,7 +322,7 @@ class Interpret:
                 ErrorMessages.exit_code(53)           
             op2 = int(instruction.args[2])
 
-        # Choose operation
+        # choose operation
         if operator == "+":
             res += op2
         elif operator == "-":
