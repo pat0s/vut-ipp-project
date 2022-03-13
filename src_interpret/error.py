@@ -8,7 +8,7 @@
 import sys
 
 class ErrorMessages:
-    """Exits program with given code and prints error message."""
+    """Exit program with given code and print error message."""
     
     @staticmethod
     def exit_code(err_code):

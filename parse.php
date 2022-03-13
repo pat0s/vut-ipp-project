@@ -24,7 +24,7 @@ class InstructionParser
     public $firstLine = true;
 
     /**
-     * @brief Checks lexical and syntactical rules
+     * @brief Check lexical and syntactical rules
      * 
      * @param Array of separated items
      */
@@ -63,7 +63,7 @@ class InstructionParser
     }
 
     /**
-     * @brief Checks number of instruction's arguments
+     * @brief Check number of instruction's arguments
      * 
      * @param Array of separated items
      * @return true/false
@@ -178,7 +178,7 @@ class InstructionParser
     }
 
     /**
-     * @brief Parses instruction and its arguments.
+     * @brief Parse instruction and its arguments.
      * 
      * @param Array of separated items
      * @return true/false
@@ -314,7 +314,7 @@ function loadArguments()
 }
 
 /**
-* @brief Loads and processes source code from stdin
+* @brief Load and process source code from stdin
 */
 function loadSourceCode()
 {
