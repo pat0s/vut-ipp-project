@@ -1,4 +1,12 @@
 <?php
+/**
+ * Project: IPP project, part 2
+ * @file test.php
+ * 
+ * @brief Tester for parser and interpret
+ * @author Patrik Sehnoutek, xsehno01
+ */
+
 
 include "src_test/html_generator.php";
 
@@ -23,7 +31,7 @@ if (count($args) != (count($argv) - 1) || count($args) > 7)
     exit(10);
 }
 
-// TODO: neviem, ci je potrebne osetrovat aj pocet argumentov pri tom, ked bude help
+// Print help message
 if (array_key_exists('help', $args) || array_key_exists('h', $args))
 {
     print("Script test.php description\n");
@@ -41,6 +49,7 @@ if (array_key_exists('help', $args) || array_key_exists('h', $args))
     exit(0);
 }
 
+// Check arguments
 if (array_key_exists('directory', $args) || array_key_exists('d', $args))
 {
     $path = isset($args['d']) ? $args['d'] : $args['directory'];
@@ -273,6 +282,7 @@ foreach($tests as $dirName => $dir)
  
 }
 
+// Close body tag and generate print website source code to stdin
 HTMLgenerator::generateEndBody($successful, $allCount);
 HTMLgenerator::generateWebpage();
 

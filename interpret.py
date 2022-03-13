@@ -1,3 +1,10 @@
+##
+#   @file interpret.py
+#
+#   @brief Interprets source code and generates output
+#   @author Patrik Sehnoutek, xsehno01
+#
+
 import xml.etree.ElementTree as ET
 import sys, re
 
@@ -5,6 +12,8 @@ from src_interpret.error import ErrorMessages
 from src_interpret.components import *
 
 class Interpret:
+    """Process input source code and generate output."""
+    
     INSTRUCTIONS = {"MOVE" : 2,
                     "CREATEFRAME" : 0, 
                     "PUSHFRAME" : 0,
@@ -64,6 +73,7 @@ class Interpret:
 
 
     def load_args(self):
+        """Load and validate program arguments."""
         argv = sys.argv
         argc = len(argv)
 
@@ -119,6 +129,7 @@ class Interpret:
 
 
     def load_source_code(self):
+        """Load XML source code and send it to further validation."""
         tree = None
 
         # parse XML source
@@ -138,18 +149,17 @@ class Interpret:
       
 
     def check_XML_root(self):
-        # check root tag
+        """Validate XML root element and his attributes."""
         if self.code.tag != "program" or self.code.get("language") != "IPPcode22":
             ErrorMessages.exit_code(32)
     
-        # check program tags
         for k, v in self.code.attrib.items():
             if k not in ["language", "name", "description"]:
                 ErrorMessages.exit_code(32)
 
 
     def sort_instructions_by_order(self):
-        # sort by order
+        """Sort instructions in ascending order by attribute 'order'."""
         try:
             self.code[:] = sorted(self.code, key=lambda child: (int(child.get("order"))))
         except:
@@ -157,7 +167,7 @@ class Interpret:
 
     
     def escape_seq_to_string(self, escape_seq):
-
+        """Convert escape sequences and XML special characters."""
         if escape_seq == "":
             return ""
 
@@ -180,7 +190,7 @@ class Interpret:
 
 
     def parse_instruction(self, tag, position):    
-        # instruction instance
+        """Split instrucions to opcode and arguments and save labels."""
         instruction = Instruction()
         
         try: 
@@ -231,29 +241,30 @@ class Interpret:
 
 
     def check_code(self):
+        """Validate attribute 'order' and send instruction for parsing."""
         # position of instruction in instruction list
         position = 0
 
-        # check order and save labels
-        previous_order = -1  
+        previousOrder = -1  
         for child in self.code:
             if child.tag != "instruction":
                 ErrorMessages.exit_code(32)
 
             order = int(child.attrib.get("order"))
-            if order <= 0 or order == previous_order:
+            if order <= 0 or order == previousOrder:
                ErrorMessages.exit_code(32)
-            previous_order = order
+            previousOrder = order
 
             self.parse_instruction(child, position)
             position += 1
         
     
     ########################################
-    ######## FUNCTIONS for OPCODES #########
+    ######### METHODS for OPCODES ##########
     ########################################
     
     def check_var(self, varName, varFrame, checkValue=False):
+        """Check var existence in the given frame."""
         var = self.frames.find_var(varName, varFrame)
         if not var:
             ErrorMessages.exit_code(54)
@@ -263,7 +274,6 @@ class Interpret:
 
     
     def MOVE(self, instruction : Instruction):
-        scr = None
         dest = self.check_var(instruction.args[0][0], instruction.args[0][1])
 
         if instruction.types[1] == "var":     
@@ -715,12 +725,11 @@ class Interpret:
         print("Instruction counter:", self.instructionCounter, file=sys.stderr)
         print("GF:", self.frames.globalFrame, file=sys.stderr)
         print("TF:", self.frames.tmpFrame, file=sys.stderr)
-        #print("LF:", self.frames, file=sys.stderr)
+        print("LF:", self.frames, file=sys.stderr)
         print("Labels list:", self.labels,file=sys.stderr)
 
 
     def interpret_code(self):
-        # help variables
         while self.instructionCounter < len(self.instructionsArray):
             instruction = self.instructionsArray[self.instructionCounter]
             opcode = instruction.opcode

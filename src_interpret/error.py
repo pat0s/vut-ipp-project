@@ -1,6 +1,14 @@
+##
+#   @file error.py
+#
+#   @brief Error handling and messages
+#   @author Patrik Sehnoutek, xsehno01
+#
+
 import sys
 
 class ErrorMessages:
+    """Exits program with given code and prints error message."""
     
     @staticmethod
     def exit_code(err_code):
