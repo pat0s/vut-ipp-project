@@ -34,6 +34,12 @@ if (count($args) != (count($argv) - 1) || count($args) > 7)
 // Print help message
 if (array_key_exists('help', $args) || array_key_exists('h', $args))
 {
+    if (count($args) != 1)
+    {
+        fprintf(STDERR, "ERROR: Wrong argument/-s");
+        exit(10);
+    }
+
     print("Script test.php description\n");
     print("Usage:   php test.php [option|options]\n");
     print("Options:\n");
@@ -54,6 +60,8 @@ if (array_key_exists('directory', $args) || array_key_exists('d', $args))
 {
     $path = isset($args['d']) ? $args['d'] : $args['directory'];
     if ($path[-1] != '/') $path = $path.'/';
+
+    check_file($path);
 }
 
 if (array_key_exists('recursive', $args) || array_key_exists('r', $args))
@@ -96,9 +104,9 @@ if (array_key_exists('int-only', $args))
     }
 }
 
-if (array_key_exists('jexampath', $args))
+if (array_key_exists('jexampath', $args) || array_key_exists('j', $args))
 {
-    $jexamdir = $args['jexampath'];
+    $jexamdir = isset($args['j']) ? $args['j'] : $args['jexampath'];
     if ($jexamdir[-1] != '/') $jexamdir = $jexamdir.'/';
 }
 
@@ -108,6 +116,7 @@ if (array_key_exists('noclean', $args))
 }
 
 $jexamexe = $jexamdir.'jexamxml.jar';
+check_file($jexamexe);
 
 // Iterator or Recursive Iterator
 $directoryIter = new RecursiveDirectoryIterator($path);
@@ -179,6 +188,8 @@ foreach($tests as $dirName => $dir)
         // Parser only
         if ($parserOnly)
         {
+            check_file($parser);
+
             unset($output);
             unset($exitCode);
             exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myOutFile.' 2> /dev/null', $output, $exitCode);
@@ -206,6 +217,8 @@ foreach($tests as $dirName => $dir)
         // Interpret only
         else if ($interpretOnly)
         {
+            check_file($interpret);
+
             unset($output);
             unset($exitCode);
             exec('python3.8 '.$interpret.' --source='.$srcFile.' --input='.$inFile.' > '.$myOutFile.' 2> /dev/null', $output, $exitCode);
@@ -233,6 +246,9 @@ foreach($tests as $dirName => $dir)
         }
         // Both
         else{
+            check_file($parser);
+            check_file($interpret);
+
             unset($output);
             unset($exitCode);
             exec('php8.1 '.$parser.' < '.$srcFile.' > '.$myXMLFile.' 2> /dev/null', $output, $exitCode);
@@ -292,6 +308,16 @@ function create_file($fileName, $content)
     $file = fopen($fileName, 'w');
     fwrite($file, $content);
     fclose($file);
+}
+
+// Check if file exists
+function check_file($fileName)
+{
+    if (!file_exists($fileName))
+    {
+        fprintf(STDERR, "ERROR: File does not exist!");
+        exit(41);
+    }
 }
 
 ?>
