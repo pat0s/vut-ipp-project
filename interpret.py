@@ -78,8 +78,7 @@ class Interpret:
         argc = len(argv)
 
         if argc == 1:
-            ErrorMessages.exit_code(10)
-        
+            ErrorMessages.exit_code(10)  
         elif argc == 2:
             if argv[1] == "--help":
                 print("\nScript loads XML representation of source code")
@@ -98,9 +97,7 @@ class Interpret:
             elif re.search(r"^--input=.+$", argv[1]):
                 self.input = re.findall(r"(?<=\=).*", argv[1])[0]
             else:
-                ErrorMessages.exit_code(10)
-
-        
+                ErrorMessages.exit_code(10)   
         elif argc == 3:
             r = re.compile(r"^(--source=|--input=).+$")
             files = list(filter(r.match, argv))

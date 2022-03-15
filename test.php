@@ -40,7 +40,7 @@ if (array_key_exists('help', $args) || array_key_exists('h', $args))
     print("     -h, --help                  print help and exit program\n");
     print("     -d, --directory=path        tests directory\n");
     print("     -r, --recursive             recursively search for tests in directory\n");
-    print("     -p, --parse-script=file     parser script, default ./parser.php\n");
+    print("     -p, --parse-script=file     parser script, default ./parse.php\n");
     print("     -i, --int-script=file       interpret script, default ./interpret.py\n");
     print("     --parse-only                test only parser\n");
     print("     --int-only                  test only interpret\n");
