@@ -878,7 +878,8 @@ class Interpret:
         exit(0)
 
 
-interpret = Interpret()
-interpret.load_args()
-interpret.load_source_code()
-interpret.interpret_code()
+if __name__ == "__main__":
+    interpret = Interpret()
+    interpret.load_args()
+    interpret.load_source_code()
+    interpret.interpret_code()
