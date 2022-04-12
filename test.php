@@ -58,7 +58,7 @@ if (array_key_exists('help', $args) || array_key_exists('h', $args))
 // Check arguments
 if (array_key_exists('directory', $args) || array_key_exists('d', $args))
 {
-    $path = isset($args['d']) ? $args['d'] : $args['directory'];
+    $path = isset($args['d']) ? './'.$args['d'] : './'.$args['directory'];
     if ($path[-1] != '/') $path = $path.'/';
 
     check_file($path);
@@ -71,12 +71,12 @@ if (array_key_exists('recursive', $args) || array_key_exists('r', $args))
 
 if (array_key_exists('parse-script', $args) || array_key_exists('p', $args))
 {
-    $parser = isset($args['p']) ? $args['p'] : $args['parse-script'];
+    $parser = isset($args['p']) ? './'.$args['p'] : './'.$args['parse-script'];
 }
 
 if (array_key_exists('int-script', $args) || array_key_exists('i', $args))
 {
-    $interpret = isset($args['i']) ? $args['i'] : $args['int-script'];
+    $interpret = isset($args['i']) ? './'.$args['i'] : './'.$args['int-script'];
 }
 
 if (array_key_exists('parse-only', $args))
